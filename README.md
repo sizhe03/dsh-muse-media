@@ -7,6 +7,8 @@
 
 用你自己的 Muse 账号在 DeepSeek Harness 对话里生成图片和视频，并在输入框旁看到本周免费额度。
 
+> English: [README.en.md](README.en.md)
+
 插件**自带浏览器驱动**：通过 Chrome DevTools Protocol 操作本机已安装的 Chrome/Chromium/Edge。不需要 Python，不需要 muse2api，不需要装第二个插件，也不碰你日常浏览器的配置。
 
 ![三个 Muse 账号及其周额度、输入框旁的额度胶囊，以及一帧生成结果](docs/preview.svg)

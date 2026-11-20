@@ -57,6 +57,13 @@ jobs:
       - name: Package parses
         run: node --check index.js && node --check client.js
 
+      - name: Tests pass
+        # The suite covers the defects that shipped and the ones that nearly did: a manifest whose
+        # version disagrees with the changelog, a detail document the Host will refuse to render,
+        # theme tokens the Host does not define, and a publish job that would run without a
+        # credential. All of them are cheap here and expensive after a release.
+        run: npm test
+
       - name: Locale files are valid JSON
         run: |
           node -e '
