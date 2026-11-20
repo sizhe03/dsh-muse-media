@@ -35,9 +35,9 @@ jobs:
     # with the manifest, and a package that cannot even be parsed.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           # No registry-url: setting it without NODE_AUTH_TOKEN can leave an empty token in .npmrc,
@@ -96,9 +96,9 @@ jobs:
     if: vars.NPM_PUBLISH_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "22"
           registry-url: ""

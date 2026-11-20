@@ -256,3 +256,63 @@ test("a message whose text differs from the prompt is not attributed", async (t)
   const count = evidence === undefined ? 0 : evidence.count;
   assert.equal(count, 0, "a different message must not be attributed");
 });
+
+test("the same prompt sent twice resolves to the most recent round", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
+  /**
+   * This is the behaviour that replaced "exactly one match".
+   *
+   * Before, a second message with the same text made the lookup return null — so a resend or a retry could
+   * never confirm its own upload, and the evidence was silently missing rather than wrong. The fixture gives
+   * the two rounds different attachment counts so the assertion can tell which one was read: if it still
+   * required a unique match it would return nothing, and if it took the first it would report 1.
+   */
+  const html = [
+    "<body><main>",
+    // Earlier round: one image.
+    '<div class="group/msg flex" id="first">',
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">',
+    "<span>你：</span><div>生成一张图</div>",
+    '<img alt="old.png" width="32" height="32">',
+    "</div>",
+    '<div class="hatch-chat-groupable-bubble hatch-agent-bubble-bg">第一轮</div>',
+    "</div>",
+    // Later round, same prompt: two images.
+    '<div class="group/msg flex" id="second">',
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">',
+    "<span>你：</span><div>生成一张图</div>",
+    "</div>",
+    '<img alt="new-a.png" width="32" height="32">',
+    '<img alt="new-b.png" width="32" height="32">',
+    "</div>",
+    "</main></body>",
+  ].join("");
+
+  const evidence = await run(html, pageRoundAttachments, "生成一张图");
+  assert.ok(evidence !== undefined, "a repeated prompt must still resolve, not return null");
+  assert.equal(evidence.count, 2, "it must read the most recent round, which has two attachments");
+});
+
+test("a repeated prompt with no attachment in the newest round reports zero, not the older count", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
+  // The complement of the test above: taking the last round must not fall back to an earlier one, or a task
+  // with no upload would inherit the previous round's attachments as evidence.
+  const html = [
+    "<body><main>",
+    '<div class="group/msg flex" id="first">',
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">',
+    "<div>生成一张图</div>",
+    '<img alt="old.png" width="32" height="32">',
+    "</div></div>",
+    '<div class="group/msg flex" id="second">',
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">',
+    "<div>生成一张图</div>",
+    "</div></div>",
+    "</main></body>",
+  ].join("");
+
+  const evidence = await run(html, pageRoundAttachments, "生成一张图");
+  // Either the newest round is found with zero attachments, or there is nothing to report — never 1.
+  const count = evidence === undefined ? 0 : evidence.count;
+  assert.equal(count, 0, "the newest round has no attachments, so the older count must not leak in");
+});

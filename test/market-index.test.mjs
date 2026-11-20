@@ -78,8 +78,8 @@ test("the listed versions match the current manifest version", () => {
    * legitimately lacks the new version.
    *
    * The rule that matters is the other direction: the index must never advertise a version that does
-   * not exist. That is checked here; the "is the newest version listed" check runs in CI, where a tag
-   * is only pushed after publishing.
+   * not exist. That is checked here for every build. The "is the newest version listed" rule runs in CI on
+   * every branch push, where a bump without a sync is a real possibility.
    */
   const index = JSON.parse(readFileSync(INDEX_PATH, "utf8"));
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
@@ -96,7 +96,18 @@ test("the listed versions match the current manifest version", () => {
     assert.ok(!newerThanManifest, `the index lists ${version}, newer than the manifest's ${pkg.version}`);
   }
 
-  // In CI (after publish) the newest version must be present. Locally, before publishing, it may lag.
+  /**
+   * In CI the newest version must be listed; locally, mid-release, it may lag.
+   *
+   * This has to apply to branch builds, not tag builds. A tag is pushed after the sync commit, so on a tag the
+   * index and the manifest agree by construction and the assertion can never fire. The failure worth catching
+   * is a branch where the version bump landed and the sync did not — the package is then live on npm while
+   * Discover still advertises the previous version, and nothing else notices.
+   *
+   * Its cost is a red commit for the minutes between bumping and syncing. That is a bookkeeping window, and it
+   * is cheaper than shipping users a stale index. The release steps close it by publishing, syncing, and
+   * committing the bump together with the index.
+   */
   const inCi = process.env.GITHUB_ACTIONS === "true" || process.env.CI === "true";
   if (inCi) {
     assert.ok(listed.includes(pkg.version), `market-index.json is missing ${pkg.version}; run the sync step`);
