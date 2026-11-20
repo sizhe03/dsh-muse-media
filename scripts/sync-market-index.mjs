@@ -103,8 +103,20 @@ try {
 
 if (dirty !== "") {
   console.log("\nNext:");
-  console.log(`  git add ${INDEX}`);
-  console.log(`  git commit -m "chore: index ${pkg.version} in the market index"`);
+  /**
+   * One commit, not two.
+   *
+   * This used to suggest a separate `chore: index …` commit. Following that produced a version bump commit
+   * whose index was still behind, which the index test correctly failed — a red commit in every release,
+   * visible to anyone reading the history. The manifest, the changelog and the index describe one release and
+   * belong in one commit.
+   */
+  console.log("  git add package.json CHANGELOG.md market-index.json");
+  console.log(`  git commit -m "${pkg.version}: <what changed>"`);
   console.log("  git push");
-  console.log(`  git tag -a v${pkg.version} -m "${pkg.version}"; git push origin v${pkg.version}`);
+  console.log(`  git tag -a v${pkg.version} -m "${pkg.version} — <summary>"`);
+  console.log(`  git push origin v${pkg.version}`);
+  console.log("");
+  console.log("  Version, changelog and index in a single commit: a bump commit without the index");
+  console.log("  fails the index test, and splitting them puts a red commit in the release history.");
 }
