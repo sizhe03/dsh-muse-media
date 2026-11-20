@@ -81,6 +81,13 @@
           "source": {
             "type": "npm"
           }
+        },
+        {
+          "version": "1.0.8",
+          "publishTimestamp": 1795183592,
+          "source": {
+            "type": "npm"
+          }
         }
       ]
     }
