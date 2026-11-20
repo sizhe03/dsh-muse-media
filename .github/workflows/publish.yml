@@ -1,0 +1,55 @@
+# Publish to npm from a tag, using OpenID Connect instead of a stored token.
+#
+# There is no NPM_TOKEN anywhere in this repository. GitHub mints a short-lived OIDC identity for
+# this exact workflow in this exact repository, npm verifies it, and that is the whole credential.
+# That is why this path was chosen over a granular token: the token route requires a secret that
+# can leak and that npm stops accepting for direct publishing in January 2027.
+#
+# The one-time bootstrap has already happened — 1.0.0 was published by hand, because npm only
+# allows configuring a trusted publisher on a package that already exists.
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  # Required: this is what lets the job request the OIDC token.
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # Deliberately no registry-url: npm's guidance is that setting it without also providing
+          # NODE_AUTH_TOKEN can leave an empty token in .npmrc that blocks the OIDC exchange.
+          registry-url: ""
+
+      - name: Verify the tag matches package.json
+        # A tag that disagrees with the manifest would publish the wrong version, and an npm
+        # version cannot be unpublished.
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$TAG" != "$PKG" ]; then
+            echo "tag $GITHUB_REF_NAME does not match package.json $PKG" >&2
+            exit 1
+          fi
+          echo "publishing $PKG"
+
+      - name: Check the package loads
+        # Cheap guard against publishing something that cannot even import.
+        run: node --check index.js && node --check client.js
+
+      - name: Publish
+        # `--provenance` is automatic for OIDC publishes from a public repository; passing it makes
+        # the intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
+        run: npm publish --provenance --access public
