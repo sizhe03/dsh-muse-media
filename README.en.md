@@ -78,15 +78,22 @@ The plugin recognises this reply and says the prompt did not meet Muse's content
 
 **Images are not restricted; video is.** Known-available regions: **United States, Canada, Japan, Singapore**.
 
-**The important part**: the restriction is tied to the **account**, not to your network. So:
+This is the one most easily mistaken for a broken plugin. The facts:
 
-- A different IP, a proxy, or a retry — **none of them help**
-- An account whose signup region differs is blocked even from inside an available region
-- The same account can change state: people report video working one day and being blocked later
+- Muse answers **403**, and the decision is based on the account's region.
+- **Once an account is flagged, it does not recover.** Measured over two months across seven accounts: six stable; one whose registration IP was outside a supported region still could not generate video two months later, while its image generation kept working the whole time.
+- So **changing IP, retrying, or rephrasing will not restore it.** Only a different account will.
 
-**What to do**: use an account registered in an available region, or generate images only.
+**What actually works (measured):**
 
-The plugin recognises this reply and states that video is unavailable for the account's region — that it is not a prompt problem.
+1. The exit IP **at registration** must be in a supported region.
+2. The exit IP **at use time** must also be in a supported region.
+3. The exit must genuinely be there — **WebRTC and DNS leaks expose the real location**. Routing traffic through a proxy while WebRTC and DNS stay local is the same as not proxying at all.
+4. Switching between servers inside one region (Seattle ↔ Los Angeles) does not affect generation; no failures observed from that.
+
+**The email does not matter.** Any email works; what matters is the region at registration and at use.
+
+The plugin recognises this reply and says the block is bound to the account, that changing IP or retrying will not restore it, and quotes Muse's own words.
 
 ### 3. Image generation needs outbound access
 
