@@ -1,6 +1,6 @@
 {
   "name": "dsh-muse-media",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "Muse (muse.ai web) image and video generation for DeepSeek Harness: drives your own Chrome through CDP, keeps one profile per account, and shows this week's credit in the composer.",
   "type": "module",
   "license": "MIT",

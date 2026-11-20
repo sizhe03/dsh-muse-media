@@ -57,6 +57,14 @@ jobs:
       - name: Package parses
         run: node --check index.js && node --check client.js
 
+      - name: Install Chrome
+        # The page-function tests drive a real browser through CDP; the runner image has no Chromium.
+        # Installing it keeps the same tests running here as on a user's machine, rather than skipping
+        # the part that breaks when Muse changes its markup.
+        uses: browser-actions/setup-chrome@v1
+        with:
+          install-chromedriver: false
+
       - name: Tests pass
         # The suite covers the defects that shipped and the ones that nearly did: a manifest whose
         # version disagrees with the changelog, a detail document the Host will refuse to render,

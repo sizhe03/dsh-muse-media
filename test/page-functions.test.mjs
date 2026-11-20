@@ -43,13 +43,33 @@ let home;
 before(async () => {
   const { MuseBrowser, MusePaths } = await import("../lib/browser.js");
   home = mkdtempSync(join(tmpdir(), "muse-page-"));
-  browser = new MuseBrowser({
-    paths: new MusePaths(home).ensure(),
-    getConfig: () => ({ chromePath: "", headlessAfterLogin: true, debugPortBase: 19_970, idleReapSeconds: 0 }),
-    log: () => {},
-  });
-  const opened = await browser.open("page-fns", { visible: false, url: "about:blank" });
-  handle = opened.page;
+
+  try {
+    browser = new MuseBrowser({
+      paths: new MusePaths(home).ensure(),
+      getConfig: () => ({
+        chromePath: "",
+        headlessAfterLogin: true,
+        debugPortBase: 19_970,
+        idleReapSeconds: 0,
+      }),
+      log: () => {},
+    });
+    const opened = await browser.open("page-fns", { visible: false, url: "about:blank" });
+    handle = opened.page;
+  } catch (error) {
+    /**
+     * No browser on this machine.
+     *
+     * CI installs Chrome, so the tests run there. This guard exists so a contributor without a browser is
+     * not blocked, and it prints why rather than passing silently — a skipped test that looks like a pass
+     * is worse than a loud skip.
+     */
+    console.warn("\n[page-functions] no Chrome available, skipping the browser-backed tests");
+    console.warn(`[page-functions] reason: ${error instanceof Error ? error.message : String(error)}\n`);
+    browser = undefined;
+    handle = undefined;
+  }
 });
 
 after(async () => {
@@ -76,35 +96,41 @@ async function run(html, fn, ...args) {
 
 /* ---- pageReady ---- */
 
-test("pageReady reports a missing composer", async () => {
+test("pageReady reports a missing composer", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   assert.equal(await run("<body><p>nothing</p></body>", pageReady), "no-composer");
 });
 
-test("pageReady reports an unhydrated shell", async () => {
+test("pageReady reports an unhydrated shell", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html = '<body><div data-hatch-shell-hydration-state="pending"></div><textarea></textarea></body>';
   assert.equal(await run(html, pageReady), "hydrating");
 });
 
-test("pageReady reports a connecting body", async () => {
+test("pageReady reports a connecting body", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html =
     '<body><div data-hatch-shell-hydration-state="hydrated"></div><textarea></textarea>Connecting...</body>';
   assert.equal(await run(html, pageReady), "connecting");
 });
 
-test("pageReady reports a disabled input", async () => {
+test("pageReady reports a disabled input", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html =
     '<body><div data-hatch-shell-hydration-state="hydrated"></div><textarea disabled></textarea></body>';
   assert.equal(await run(html, pageReady), "input-disabled");
 });
 
-test("pageReady says ready only when everything lines up", async () => {
+test("pageReady says ready only when everything lines up", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html = '<body><div data-hatch-shell-hydration-state="hydrated"></div><textarea></textarea></body>';
   assert.equal(await run(html, pageReady), "ready");
 });
 
 /* ---- pageSnapshot ---- */
 
-test("pageSnapshot separates user bubbles from agent bubbles", async () => {
+test("pageSnapshot separates user bubbles from agent bubbles", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html = [
     "<body><main>",
     '<div class="hatch-chat-groupable-bubble chat-user-bubble">用户说的话</div>',
@@ -118,19 +144,22 @@ test("pageSnapshot separates user bubbles from agent bubbles", async () => {
   assert.match(snapshot.agents[0].text, /助手/);
 });
 
-test("pageSnapshot reports no stop control when idle", async () => {
+test("pageSnapshot reports no stop control when idle", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const snapshot = await run("<body><main></main></body>", pageSnapshot);
   assert.equal(snapshot.stop, false);
 });
 
-test("pageSnapshot sees a visible stop control while generating", async () => {
+test("pageSnapshot sees a visible stop control while generating", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html =
     '<body><main><button data-testid="hatch-composer-stop-button" style="display:block">Stop</button></main></body>';
   const snapshot = await run(html, pageSnapshot);
   assert.equal(snapshot.stop, true);
 });
 
-test("pageSnapshot ignores a hidden stop control", async () => {
+test("pageSnapshot ignores a hidden stop control", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   // Muse keeps the node mounted and hides it; reading that as "generating" makes the plugin wait for a
   // task that already finished.
   const html =
@@ -139,14 +168,16 @@ test("pageSnapshot ignores a hidden stop control", async () => {
   assert.equal(snapshot.stop, false);
 });
 
-test("pageSnapshot carries the tail a timeout message quotes", async () => {
+test("pageSnapshot carries the tail a timeout message quotes", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const snapshot = await run("<body><main>生成中</main><div>视频生成在你的地区不可用</div></body>", pageSnapshot);
   assert.match(snapshot.tail, /地区不可用/);
 });
 
 /* ---- pageRoundAttachments ---- */
 
-test("an image inside the bubble counts once, not twice", async () => {
+test("an image inside the bubble counts once, not twice", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   // The container encloses the bubble, so the same node is reachable from both. Counting it twice was a
   // real defect: the attachment check cited evidence that did not exist.
   const html = [
@@ -165,7 +196,8 @@ test("an image inside the bubble counts once, not twice", async () => {
   assert.equal(evidence.count, 1, "one nested image must not be counted as two");
 });
 
-test("two thumbnails in the container count as two", async () => {
+test("two thumbnails in the container count as two", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   const html = [
     "<body><main>",
     '<div class="group/msg flex" id="container">',
@@ -180,7 +212,8 @@ test("two thumbnails in the container count as two", async () => {
   assert.equal(evidence.count, 2);
 });
 
-test("a message whose text differs from the prompt is not attributed", async () => {
+test("a message whose text differs from the prompt is not attributed", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
   // Attributing the wrong message would make the plugin claim an upload it never made.
   const html = [
     "<body><main>",
