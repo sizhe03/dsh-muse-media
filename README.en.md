@@ -62,6 +62,40 @@ A copy installed from a local directory (`file:` / `link:`) is never marked upda
 
 Every generation really spends that account's Muse allowance, exactly as clicking in the web UI would. The same prompt produces a different result twice — there is no seed upstream and the plugin does not offer one. A rate limit or an exhausted allowance stops the task; the plugin will not quietly switch accounts, with one exception: an expired sign-in.
 
+## ⚠️ The two real reasons a generation fails
+
+Muse **accepts** the request and then produces nothing. Two causes are known, and they need opposite responses:
+
+### 1. The content was refused
+
+Sexual implication, violence and similar content are declined.
+
+**What to do**: rephrase. **Retrying the same prompt will not work.**
+
+The plugin recognises this reply and says the prompt did not meet Muse's content policy, quoting the page.
+
+### 2. Video generation is restricted by the account's region
+
+**Images are not restricted; video is.** Known-available regions: **United States, Canada, Japan, Singapore**.
+
+**The important part**: the restriction is tied to the **account**, not to your network. So:
+
+- A different IP, a proxy, or a retry — **none of them help**
+- An account whose signup region differs is blocked even from inside an available region
+- The same account can change state: people report video working one day and being blocked later
+
+**What to do**: use an account registered in an available region, or generate images only.
+
+The plugin recognises this reply and states that video is unavailable for the account's region — that it is not a prompt problem.
+
+### 3. Image generation needs outbound access
+
+Images are not region-restricted, but the plugin operates the muse.ai web app, so **it must be reachable**. With no working connection nothing will generate.
+
+### When the plugin does not recognise it
+
+Muse's wording can change. When neither recogniser fires, the timeout error now **includes the tail of the page** — you see what Muse actually said, rather than only "timed out".
+
 ## Boundaries
 
 - Drives only the browser you installed; the debugging port binds `127.0.0.1`.
