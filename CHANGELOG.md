@@ -4,6 +4,25 @@
 
 ## [Unreleased]
 
+## [1.0.5] — 2026-11-20
+
+加了 DSH 插件市场索引，让插件能被 Discover 页发现。
+
+### Added
+
+- market-index.json：格式 1 的插件市场索引，已通过 DSH 自带的 parseMarketIndex 校验。
+- docs/DISCOVERY.md：怎么让别人找到这个插件——索引怎么托管、npm 和 GitHub 的可见性、按性价比排序的建议。
+- 	est/market-index.test.mjs：6 项，包含用真实校验器验证索引，以及检查索引里的版本与 package.json 一致。
+
+### Changed
+
+- npm 关键词从 7 个增至 9 个，补 deepseek、rowser-automation。
+
+### Notes
+
+索引是一份可以自己托管的 JSON，不需要任何收录审批：别人把 URL 加进 DSH 的 Discover 就能看到并安装。
+
+每次发版必须同时更新 market-index.json 里的版本列表，否则 Discover 会显示旧版本。这条有测试守护。
 ## [1.0.4] — 2026-11-20
 
 把决策层也纳入测试，并修正一个被调用方掩盖的缺陷。
