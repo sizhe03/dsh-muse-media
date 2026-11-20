@@ -93,6 +93,31 @@ Muse 没有独立的视频模式：界面上只有一个对话框，「生成视
 | `imageTimeoutSeconds` | `300` | 生图等待上限 |
 | `videoTimeoutSeconds` | `780` | 生视频等待上限 |
 
+## 开发
+
+```bash
+git clone https://github.com/sizhe03/dsh-muse-media.git
+cd dsh-muse-media
+```
+
+```bash
+npm test        # 59 项：清单、索引、编码、主题变量、CI 开关、决策层逻辑
+npm run check   # 语法检查 + 测试
+```
+
+测试覆盖的是**能出错的判断**，不是行数：版本号与 CHANGELOG 是否一致、市场索引能否通过 DSH 校验器、详情文档格式、主题变量在 Host 里是否存在、文本文件是否为合法 UTF-8、发布 job 有没有开关、以及 `lib/pool.js` 的选号与故障分类。
+
+**不覆盖** `lib/muse.js` 的页面操作（发送、上传、等待媒体）——那些依赖真实 muse.ai 页面结构。改动那部分请人工验证一次真实生成。
+
+### 发版流程
+
+1. 改 `package.json` 的 `version`
+2. 在 `CHANGELOG.md` 加一节（不加则测试失败）
+3. `npm test`
+4. `npm publish`
+5. `node scripts/sync-market-index.mjs`（把新版本加进插件市场索引）
+6. 提交、打 `v*` 标签；标签会跑 CI 校验但不发布
+
 ## 文档
 
 - [`docs/DESIGN.md`](docs/DESIGN.md) —— 设计与实现说明：发送边界、故障分类、选号逻辑、为什么某些限制是故意的
