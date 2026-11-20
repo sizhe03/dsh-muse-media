@@ -1,12 +1,21 @@
 # Publish to npm from a tag, using OpenID Connect instead of a stored token.
 #
-# There is no NPM_TOKEN anywhere in this repository. GitHub mints a short-lived OIDC identity for
-# this exact workflow in this exact repository, npm verifies it, and that is the whole credential.
-# That is why this path was chosen over a granular token: the token route requires a secret that
-# can leak and that npm stops accepting for direct publishing in January 2027.
+# There is no NPM_TOKEN here: GitHub mints a short-lived OIDC identity for this exact workflow in this
+# exact repository, npm verifies it, and that is the whole credential.
 #
-# The one-time bootstrap has already happened — 1.0.0 was published by hand, because npm only
-# allows configuring a trusted publisher on a package that already exists.
+# Publishing is gated. The variable NPM_PUBLISH_ENABLED must be "true" (repository settings → Secrets
+# and variables → Actions → Variables) for the publish step to run. While it is unset, a tag still
+# validates and reports, and publishes nothing.
+#
+# Why the gate: OIDC publishing only works once a trusted publisher is configured on npmjs.com, and
+# that page refuses to save until the npm account has 2FA with a hardware key. Until then a tag would
+# run npm publish with no credential and fail, which is a worse outcome than not trying.
+#
+# Turning it on later:
+#   1. On npmjs.com → package dsh-muse-media → Settings → Trusted Publisher → GitHub Actions:
+#      user sizhe03, repository dsh-muse-media, workflow publish.yml, allow npm publish.
+#   2. Add the variable NPM_PUBLISH_ENABLED = true.
+#   3. Bump the version, commit, then push a matching v* tag.
 name: publish
 
 on:
@@ -17,11 +26,13 @@ on:
 
 permissions:
   contents: read
-  # Required: this is what lets the job request the OIDC token.
+  # Required for the OIDC token exchange.
   id-token: write
 
 jobs:
-  publish:
+  verify:
+    # Always runs, for every tag. Catches the two mistakes that cannot be undone: a tag that disagrees
+    # with the manifest, and a package that cannot even be parsed.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,27 +40,52 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          # Deliberately no registry-url: npm's guidance is that setting it without also providing
-          # NODE_AUTH_TOKEN can leave an empty token in .npmrc that blocks the OIDC exchange.
+          # No registry-url: setting it without NODE_AUTH_TOKEN can leave an empty token in .npmrc,
+          # which blocks the OIDC exchange.
           registry-url: ""
 
-      - name: Verify the tag matches package.json
-        # A tag that disagrees with the manifest would publish the wrong version, and an npm
-        # version cannot be unpublished.
+      - name: Tag must match package.json
         run: |
           TAG="${GITHUB_REF_NAME#v}"
           PKG="$(node -p "require('./package.json').version")"
           if [ "$TAG" != "$PKG" ]; then
-            echo "tag $GITHUB_REF_NAME does not match package.json $PKG" >&2
+            echo "::error::tag $GITHUB_REF_NAME does not match package.json $PKG"
             exit 1
           fi
-          echo "publishing $PKG"
+          echo "tag and manifest agree on $PKG"
 
-      - name: Check the package loads
-        # Cheap guard against publishing something that cannot even import.
+      - name: Package parses
         run: node --check index.js && node --check client.js
 
+      - name: Locale files are valid JSON
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            for (const lang of ["en", "zh"]) {
+              const file = `locale/${lang}.json`;
+              const data = JSON.parse(fs.readFileSync(file, "utf8"));
+              if (!data.meta?.title || !data.meta?.description) {
+                console.error(`${file}: meta.title or meta.description missing`);
+                process.exit(1);
+              }
+              console.log(`${file}: ok`);
+            }
+          '
+
+  publish:
+    needs: verify
+    # Skipped unless the variable is set to true. A skipped job is not a failure.
+    if: vars.NPM_PUBLISH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: ""
+
       - name: Publish
-        # `--provenance` is automatic for OIDC publishes from a public repository; passing it makes
-        # the intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
+        # --provenance is automatic for OIDC publishes from a public repository; passing it makes the
+        # intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
         run: npm publish --provenance --access public
