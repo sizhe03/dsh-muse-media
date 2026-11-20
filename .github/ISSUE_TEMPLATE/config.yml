@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: npm 包页面
+    url: https://www.npmjs.com/package/dsh-muse-media
+    about: 版本历史、安装命令、已发布的说明文档
+  - name: Muse 官方
+    url: https://muse.ai
+    about: 账号、额度、生成质量等上游问题

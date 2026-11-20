@@ -1,0 +1,85 @@
+name: 报告问题
+description: 插件行为异常、任务失败、或界面显示不对
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。请先确认：**重启过 Harness**、**Chrome 能正常登录 muse.ai**。
+
+        ⚠️ 不要贴账号密码、`.npmrc` 里的 token、或 Muse 的 cookie / 会话 token。
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 发生了什么
+      description: 你期望的结果，和实际看到的结果。
+      placeholder: |
+        期望：生成一段 5 秒视频
+        实际：任务停在「已发送」，13 分钟后超时
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 能复现的最小条件。如果能稳定复现，或者换个说法就成功，请写清差异。
+      placeholder: |
+        1. 设置 → Muse，acc-01 显示可用
+        2. 对话里要求生成视频，提示词：……
+        3. 等待约 13 分钟后报超时
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断信息
+      description: 设置 → Muse → 高级 → 诊断 里的内容。
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: harness
+    attributes:
+      label: DeepSeek Harness 版本
+      placeholder: 0.2.2-rc.5
+    validations:
+      required: true
+
+  - type: input
+    id: plugin
+    attributes:
+      label: 插件版本
+      placeholder: 1.0.1
+    validations:
+      required: true
+
+  - type: input
+    id: chrome
+    attributes:
+      label: Chrome / Chromium / Edge 版本
+      placeholder: 157.0.0.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: 出现频率
+      options:
+        - 每次必现
+        - 偶尔出现
+        - 只出现过一次
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: 其他线索
+      description: 最近有没有改过设置？同期有没有别的任务在跑？控制台有没有报错？
+    validations:
+      required: false
