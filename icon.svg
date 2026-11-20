@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Muse media">
+  <title>Muse media</title>
+  <!-- Original geometric mark: an aperture ring holding a play facet.
+       Drawn from primitives only; no vendor logo, wordmark or brand colour. -->
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="#1F2A37"/>
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#E8EDF2" stroke-width="3"/>
+  <path d="M27 22.5 43 32 27 41.5Z" fill="#E8EDF2"/>
+  <circle cx="32" cy="32" r="18" fill="none" stroke="#7FB3D5" stroke-width="3"
+          stroke-dasharray="14 99" stroke-linecap="round" transform="rotate(-90 32 32)"/>
+</svg>

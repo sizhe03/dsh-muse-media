@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Local build and test output
+dist/
+coverage/
+*.tgz
+
+# Scratch: anything prefixed with an underscore is a local probe, not a deliverable.
+# Two of these exist as a matter of habit while working on the UI (a rendered preview and
+# the script that produces it); they must never reach a public repository.
+_*
+!docs/_*
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+
+# The internal goal document states delivery scope and acceptance criteria for this build.
+# It is working material for the author, not documentation for users, and it opens with
+# "待确认" — publishing it would present an unfinished plan as a promise.
+GOAL.md

@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Muse 媒体",
+    "description": "用你自己的 Muse 账号在对话里生成图片和视频，并在输入框旁显示本周已用额度。插件自带浏览器驱动，通过 CDP 操作本机 Chrome，不需要 Python、网关或其他插件。",
+    "detail": "docs/DETAIL.md"
+  }
+}

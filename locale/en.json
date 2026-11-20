@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Muse media",
+    "description": "Generate images and videos in the conversation with your own Muse account, and see this week's usage beside the composer. The plugin drives your installed Chrome over CDP: no Python, no gateway, no companion plugin.",
+    "detail": "docs/DETAIL.md"
+  }
+}

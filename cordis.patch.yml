@@ -1,0 +1,37 @@
+# Inserts the Muse media plugin. Every field is a default; a user override in
+# the profile's own patch layer replaces this whole `config` object.
+- insert:
+    - id: muse-media
+      name: dsh-muse-media
+      config:
+        # Empty means auto-detect Chrome/Chromium/Edge on this machine.
+        chromePath: ''
+        # Generations and tests run headless: a window that opens for every image
+        # is an interruption with no information in it. Only "open sign-in window"
+        # is visible, because only that needs a person in front of it.
+        headlessAfterLogin: true
+        # Reap an idle plugin browser after this many seconds (0 = never).
+        idleReapSeconds: 600
+        # How many browsers may run at once (0 = no ceiling). One headless Muse
+        # page measures ten processes and roughly 900 MB, so this ceiling is what
+        # keeps a multi-account install from needing gigabytes. A visible window is
+        # never evicted.
+        maxLiveBrowsers: 2
+        # One page operation at a time; these bound each tool call. The tool's own
+        # timeout is computed from these values plus the surrounding stages, so
+        # raise them together if you raise them at all.
+        imageTimeoutSeconds: 300
+        videoTimeoutSeconds: 780
+        quotaTimeoutSeconds: 90
+        # Background quota refresh, in seconds (0 = off). The composer readout
+        # updates itself; it never opens a browser just to read a number.
+        autoRefreshQuotaSeconds: 300
+        # At most this many different accounts per task, first one included,
+        # capped at 5. Raise it only if you really want a task to walk the pool.
+        maxAccountsPerTask: 2
+        # Send-confirmation windows, in seconds.
+        deliveryWarnSeconds: 25
+        deliveryUnknownSeconds: 60
+        # Hard deadline for the conversation probe.
+        probeTimeoutSeconds: 60
+        showQuotaInComposer: true
