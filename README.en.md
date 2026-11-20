@@ -125,10 +125,23 @@ Every value lives in `cordis.patch.yml` and can also be changed in **Settings �
 | `imageTimeoutSeconds` | `300` | Image wait limit |
 | `videoTimeoutSeconds` | `780` | Video wait limit |
 
+## CI
+
+Two workflows:
+
+- **`.github/workflows/ci.yml`** — runs the tests on every push and pull request, so a broken test is
+  found when the change lands rather than while cutting a release.
+- **`.github/workflows/publish.yml`** — runs on `v*` tags only, verifies the tag against the manifest,
+  and skips publishing (releases are still made by hand).
+
+Chrome is installed in CI because the page-layer tests drive a real browser. **If Chrome fails to start in
+CI the tests fail rather than skip** — a skip would let `npm test` exit 0 with nothing verified. Skipping
+happens only on a machine without Chrome, and it says so.
+
 ## Development
 
 ```bash
-npm test        # 18 checks: manifest, locales, preview constraints, theme tokens, CI gate
+npm test        # 98 checks: manifest, index, encoding, theme tokens, CI structure, decision layer, page layer, refusal recognition
 npm run check   # syntax plus the tests
 ```
 

@@ -1,0 +1,55 @@
+# Tests on every push, not only at release time.
+#
+# The publish workflow runs the same suite, but it only triggers on a version tag — which means a broken
+# test is first discovered while cutting a release. This runs it on every branch push and pull request, so
+# the failure arrives when the change does.
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Chrome
+        # The page-function tests drive a real browser through CDP. Without this they would skip, and in CI
+        # the suite deliberately fails rather than skipping — so this step is what makes them run.
+        uses: browser-actions/setup-chrome@v1
+        with:
+          install-chromedriver: false
+
+      - name: Syntax
+        run: node --check index.js && node --check client.js
+
+      - name: Tests
+        run: npm test
+
+      - name: Locales are valid JSON
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            for (const lang of ["en", "zh"]) {
+              const file = `locale/${lang}.json`;
+              const data = JSON.parse(fs.readFileSync(file, "utf8"));
+              if (!data.meta?.title || !data.meta?.description) {
+                console.error(`${file}: meta.title or meta.description missing`);
+                process.exit(1);
+              }
+            }
+          '
+
+      - name: Package builds
+        run: npm pack --dry-run

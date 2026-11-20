@@ -59,14 +59,26 @@ before(async () => {
     handle = opened.page;
   } catch (error) {
     /**
-     * No browser on this machine.
+     * A browser that will not start means two different things depending on where it happens.
      *
-     * CI installs Chrome, so the tests run there. This guard exists so a contributor without a browser is
-     * not blocked, and it prints why rather than passing silently — a skipped test that looks like a pass
-     * is worse than a loud skip.
+     * Locally, it usually means Chrome is not installed, and blocking a contributor over that is wrong —
+     * so the tests skip and say why.
+     *
+     * In CI it means the Chrome install step or the launch flags broke. Skipping there would let
+     * `npm test` exit 0 while the entire page layer went untested, which is the failure mode a test suite
+     * exists to prevent. So CI rethrows.
      */
+    const reason = error instanceof Error ? error.message : String(error);
+    if (process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true") {
+      throw new Error(
+        `[page-functions] Chrome failed to start in CI (${reason}).` +
+          " The page tests cover the code that breaks when Muse changes its markup; skipping them here" +
+          " would report success while nothing was verified.",
+      );
+    }
+
     console.warn("\n[page-functions] no Chrome available, skipping the browser-backed tests");
-    console.warn(`[page-functions] reason: ${error instanceof Error ? error.message : String(error)}\n`);
+    console.warn(`[page-functions] reason: ${reason}\n`);
     browser = undefined;
     handle = undefined;
   }
@@ -109,9 +121,25 @@ test("pageReady reports an unhydrated shell", async (t) => {
 
 test("pageReady reports a connecting body", async (t) => {
   if (handle === undefined) return t.skip("no Chrome on this machine");
+  // The status line lives outside the transcript; the matcher only looks there now.
   const html =
-    '<body><div data-hatch-shell-hydration-state="hydrated"></div><textarea></textarea>Connecting...</body>';
+    '<body><div data-hatch-shell-hydration-state="hydrated"></div><textarea></textarea>' +
+    '<div role="status">Connecting...</div></body>';
   assert.equal(await run(html, pageReady), "connecting");
+});
+
+test("pageReady is not fooled by the phrase appearing in the transcript", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
+  // A user quoting the status, or an earlier reply mentioning it, must not pin the account at "connecting"
+  // for the rest of the session.
+  const html = [
+    "<body>",
+    '<div data-hatch-shell-hydration-state="hydrated"></div>',
+    "<textarea></textarea>",
+    '<div class="hatch-chat-groupable-bubble hatch-agent-bubble-bg">页面显示 Connecting... 的时候就是在连</div>',
+    "</body>",
+  ].join("");
+  assert.equal(await run(html, pageReady), "ready", "a transcript mention is not a status notice");
 });
 
 test("pageReady reports a disabled input", async (t) => {

@@ -158,8 +158,31 @@ test("the publish job is gated and the verify job is not", () => {
   assert.match(publish, /if:\s*vars\.NPM_PUBLISH_ENABLED\s*==\s*'true'/, "publishing must be gated");
 
   const verify = code.slice(code.indexOf("\n  verify:"), code.indexOf("\n  publish:"));
-  assert.ok(!/^\s*if:/m.test(verify), "verification must run on every tag");
+  /**
+   * The job must run for every trigger, but a *step* inside it may be conditional.
+   *
+   * The original assertion was "nothing in verify carries an if:", which was a proxy for "verification runs
+   * on every tag". The tag-comparison step now needs a condition — a manual dispatch from main has no tag to
+   * compare, and without the guard it fails for a reason unrelated to the code — so the proxy no longer holds
+   * while the intent still does. Asserting the intent directly is better than dropping either check.
+   */
+  assert.ok(!/^ {4}if:/m.test(verify), "the verify job itself must not be conditional");
   assert.match(verify, /GITHUB_REF_NAME/);
+  assert.match(
+    verify,
+    /if: startsWith\(github\.ref, 'refs\/tags\/v'\)/,
+    "the tag comparison must be limited to tag refs, or a manual run fails for the wrong reason",
+  );
+});
+
+test("a separate workflow runs the tests on every push", () => {
+  // Running the suite only at tag time means a broken test is first discovered while cutting a release.
+  const ci = readFileSync(".github/workflows/ci.yml", "utf8");
+  assert.match(ci, /push:/, "it must trigger on push");
+  assert.match(ci, /pull_request:/, "and on pull requests");
+  assert.match(ci, /npm test/, "and it must run the suite");
+  assert.match(ci, /setup-chrome/, "and install Chrome, or the page tests skip in CI");
+  assert.match(ci, /npm pack --dry-run/, "and check that the package still builds");
 });
 
 test("the workflow references no stored credential", () => {
