@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [1.0.7] — 2026-11-20
+
+把作者身份写清楚。
+
+### Changed
+
+- LICENSE 的版权行从 dsh-muse-media contributors 改为 sizhe03。复数泛称没有指向具体的人，而 MIT 要求版权声明随副本传递。
+- package.json 新增 uthor 字段，npm 页面现在会显示作者。此前该字段为空，npm 上查不到作者。
+
+### Added
+
+- 	est/authorship.test.mjs：5 项，守护版权行不是占位泛称、author 字段存在、MIT 正文未被改动、manifest 与 LICENSE 的许可标识一致。
+
+### 为什么改
+
+代码本身没有争议：9,730 行全部自写，零运行时依赖，无 vendored 副本；与 muse2api 的逐行比对只有 3 行相同，且都是 Chromium 启动参数与 Chrome 安装路径这类固定常量。
+
+但版权行写的是 contributors，uthor 字段是空的——形式上没有人声明这是谁的作品。对一个要长期维护、希望在 npm 和 GitHub 上被记住的项目，这个模糊没有理由保留。
 ## [1.0.6] — 2026-11-20
 
 补上发版流程缺的两个环节：一个能跑同步的脚本，和仓库里根本没写的开发说明。
