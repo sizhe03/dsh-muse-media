@@ -136,6 +136,7 @@ window.__ModuleLoader__.load({
       "settings.showAll": "显示全部",
       "settings.stateUnknown": "结果未知",
       "settings.stateFailed": "未完成",
+      "settings.stateUnsaved": "已生成，本地保存失败；请到该账号的 Muse 会话取回",
       "settings.advanced": "高级设置",
       "settings.save": "保存",
       "settings.saved": "已保存",
@@ -268,6 +269,7 @@ window.__ModuleLoader__.load({
       "settings.showAll": "Show all",
       "settings.stateUnknown": "unknown",
       "settings.stateFailed": "did not finish",
+      "settings.stateUnsaved": "Generated, local save failed. Retrieve it from this account’s Muse chat.",
       "settings.advanced": "Advanced",
       "settings.save": "Save",
       "settings.saved": "Saved",
@@ -1194,7 +1196,9 @@ window.__ModuleLoader__.load({
               // "did not finish" are different and only one needs attention.
               task.state === "delivered"
                 ? null
-                : h("span", { className: `muse-tag muse-tag--${task.state === "unknown" ? "warn" : "bad"}` },
+                : task.state === "generated-unsaved"
+                ? h("span", { className: "muse-tag muse-tag--warn", title: task.note }, t("settings.stateUnsaved"))
+                : h("span", { className: `muse-tag muse-tag--${task.state === "unknown" ? "warn" : "bad"}`, title: task.note },
                     task.state === "unknown" ? t("settings.stateUnknown") : t("settings.stateFailed")),
             ),
           ),

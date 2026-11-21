@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { pageReady, pageSnapshot, pageRoundAttachments, describeReadyState } from "../lib/muse.js";
+import { MusePage, pageReady, pageSnapshot, pageRoundAttachments, describeReadyState } from "../lib/muse.js";
 
 /* ============================================================
  * describeReadyState — pure
@@ -107,6 +107,26 @@ async function run(html, fn, ...args) {
 }
 
 /* ---- pageReady ---- */
+
+test("waitMedia waits past a sibling upload preview and delivers the assistant's bytes", async (t) => {
+  if (handle === undefined) return t.skip("no Chrome on this machine");
+  const baseline = await run("<body><main><textarea></textarea></main></body>", pageSnapshot);
+  const message = (role, label) =>
+    `<div class="group/msg"><div class="hatch-chat-groupable-bubble ${role}">${label}</div>` +
+    `<div data-testid="hatch-chat-attachment-presentation-image"><img src="data:image/png;base64,${Buffer.from(label).toString("base64")}"></div></div>`;
+  const append = (html) => handle.js(`document.querySelector('main').insertAdjacentHTML('beforeend', ${JSON.stringify(html)})`);
+  await append(message("chat-user-bubble", "reference"));
+  const page = new MusePage(handle);
+  const snapshot = page.snapshot.bind(page);
+  let samples = 0;
+  t.mock.method(page, "snapshot", async () => {
+    if (++samples === 2) await append(message("hatch-agent-bubble-bg", "generated"));
+    return snapshot();
+  });
+  const media = await page.waitMedia(baseline, { kind: "image", deadline: Date.now() + 5000 });
+  assert.equal(media.bytes.toString(), "generated");
+  assert.ok(samples >= 2);
+});
 
 test("pageReady reports a missing composer", async (t) => {
   if (handle === undefined) return t.skip("no Chrome on this machine");

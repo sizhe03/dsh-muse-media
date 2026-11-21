@@ -503,9 +503,7 @@ class MuseRuntime {
   }
 
   mediaDir() {
-    const dir = join(this.#paths.root, "media");
-    mkdirSync(dir, { recursive: true });
-    return dir;
+    return join(this.#paths.root, "media");
   }
 
   /**
@@ -1376,6 +1374,15 @@ class MuseRuntime {
 
         // ---- exits that must not be retried on another account ----
 
+        if (failure.code === "MEDIA_SAVE_FAILED") {
+          try {
+            this.#tasks.update(task.id, { state: TASK_STATE.GENERATED_UNSAVED, note: failure.message });
+          } catch (journalError) {
+            // A full disk can also prevent the journal write. Preserve the recovery instructions.
+            this.#log(`任务 ${task.id} 的保存失败记录未能写入：${journalError}`);
+          }
+          throw failure;
+        }
         if (failure.code === "OUTCOME_UNKNOWN" || failure.kind === FAILURE.TIMEOUT) {
           this.#tasks.update(task.id, { state: TASK_STATE.UNKNOWN, note: failure.message });
           throw failure;
@@ -1656,8 +1663,8 @@ class MuseRuntime {
           media = await page.waitMedia(baseline, { kind, deadline, referenceSources: sources });
         } catch (error) {
           const failure = asFailure(error, { stage: "media" });
-          // A verified quota stop keeps its own kind so the caller can cool the
-          // account (A17). Anything else after acceptance is an unknown result.
+          // Explicit refusals are final answers, even though delivery was confirmed.
+          if (failure.code === "CONTENT_REFUSED" || failure.code === "REGION_UNAVAILABLE") throw failure;
           if (failure.kind === FAILURE.QUOTA_EXHAUSTED || failure.kind === FAILURE.RATE_LIMITED) {
             this.#tasks.update(task.id, { state: TASK_STATE.ACCEPTED, note: failure.message });
             throw failure;
@@ -1673,7 +1680,16 @@ class MuseRuntime {
           );
         }
 
-        const stored = this.#storeMedia(media, kind);
+        let stored;
+        try {
+          stored = this.#storeMedia(media, kind);
+        } catch (cause) {
+          throw new MuseFailure(
+            `任务 ${task.id} 上游已生成，本地保存失败。请到账号 ${account.label}（${account.id}）的 Muse 会话取回成品，无需重新生成。` +
+              ` 原因：${cause instanceof Error ? cause.message : String(cause)}`,
+            { code: "MEDIA_SAVE_FAILED", stage: "save", cause },
+          );
+        }
         this.#tasks.update(task.id, {
           state: TASK_STATE.DELIVERED,
           media: stored.file,
@@ -1756,12 +1772,20 @@ class MuseRuntime {
    */
   #storeMedia(media, kind) {
     const dir = this.mediaDir();
+    mkdirSync(dir, { recursive: true });
     const ext =
       MEDIA_EXT[(media.mime || "").toLowerCase()] ??
       (kind === "video" ? ".mp4" : extname(nonEmpty(media.source) ?? "") || ".png");
     const name = `muse-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}${ext}`;
     const file = join(dir, name);
-    writeFileSync(file, media.bytes);
+    try {
+      writeFileSync(file, media.bytes, { flag: "wx" });
+    } catch (error) {
+      if (error.code !== "EEXIST") {
+        try { rmSync(file, { force: true }); } catch { /* best-effort cleanup after a partial write */ }
+      }
+      throw error;
+    }
     this.#mediaBytesCache = undefined;
     return {
       file,
@@ -2291,7 +2315,7 @@ class MuseRuntime {
        */
       history: this.#tasks
         .list()
-        .filter((task) => task.state === TASK_STATE.DELIVERED || task.state === TASK_STATE.FAILED || task.state === TASK_STATE.UNKNOWN)
+        .filter((task) => [TASK_STATE.DELIVERED, TASK_STATE.GENERATED_UNSAVED, TASK_STATE.FAILED, TASK_STATE.UNKNOWN].includes(task.state))
         .slice(0, 24)
         .map((task) => ({
           id: task.id,
@@ -2495,6 +2519,7 @@ class MuseRuntime {
     let failed = 0;
     let why;
     try {
+      mkdirSync(dir, { recursive: true });
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
         const full = join(dir, entry.name);
         if (entry.isDirectory()) {
