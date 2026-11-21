@@ -162,7 +162,7 @@ test("the account whose allowance expires soonest runs first", () => {
   const result = rankAccounts([
     account({ id: "late", quota: { usedPct: 5, reset: "11月27日", at: NOW_MS - 60_000 } }),
     account({ id: "soon", quota: { usedPct: 80, reset: "11月21日", at: NOW_MS - 60_000 } }),
-  ]);
+  ], { now: NOW_MS });
 
   assert.ok(Array.isArray(result.ordered), "rankAccounts returns { ordered, verdicts }");
   assert.equal(result.ordered[0].id, "soon", "the earlier reset wins even with more used");
@@ -174,12 +174,12 @@ test("a stale reading is refreshed before anything else", () => {
     account({ id: "fresh", quota: { usedPct: 10, reset: "11月21日", at: NOW_MS - 1_000 } }),
     // Read three days ago, reset printed as two days ago: the number cannot be trusted.
     account({ id: "stale", quota: { usedPct: 10, reset: "11月18日", at: NOW_MS - 86_400_000 * 3 } }),
-  ]);
+  ], { now: NOW_MS });
   assert.equal(result.ordered[0].id, "stale", "an out-of-date reading is refreshed first");
 });
 
 test("an excluded account is never returned", () => {
-  const result = rankAccounts([account({ id: "a" }), account({ id: "b" })], { excluded: new Set(["a"]) });
+  const result = rankAccounts([account({ id: "a" }), account({ id: "b" })], { excluded: new Set(["a"], { now: NOW_MS }) });
   assert.deepEqual(
     result.ordered.map((entry) => entry.id),
     ["b"],
@@ -188,12 +188,14 @@ test("an excluded account is never returned", () => {
 
 test("the picked account breaks ties but never overrides an earlier reset", () => {
   const sameDay = "11月22日";
+  // `now` must be passed: rankAccounts defaults it to Date.now(), which would make these assertions depend on
+  // the real calendar. They passed on the day they were written and drifted afterwards.
   const tied = rankAccounts(
     [
       account({ id: "other", quota: { usedPct: 50, reset: sameDay, at: NOW_MS - 60_000 } }),
       account({ id: "picked", selected: true, quota: { usedPct: 50, reset: sameDay, at: NOW_MS - 60_000 } }),
     ],
-    { preferredId: "picked" },
+    { preferredId: "picked", now: NOW_MS },
   );
   assert.equal(tied.ordered[0].id, "picked", "equal conditions put the picked account first");
 
@@ -202,7 +204,7 @@ test("the picked account breaks ties but never overrides an earlier reset", () =
       account({ id: "picked", selected: true, quota: { usedPct: 50, reset: "11月27日", at: NOW_MS - 60_000 } }),
       account({ id: "sooner", quota: { usedPct: 50, reset: "11月21日", at: NOW_MS - 60_000 } }),
     ],
-    { preferredId: "picked" },
+    { preferredId: "picked", now: NOW_MS },
   );
   assert.equal(earlier.ordered[0].id, "sooner", "an earlier reset outranks the pick");
 });

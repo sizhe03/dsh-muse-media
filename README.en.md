@@ -134,6 +134,18 @@ Two workflows:
 - **`.github/workflows/publish.yml`** — runs on `v*` tags only, verifies the tag against the manifest,
   and skips publishing (releases are still made by hand).
 
+### When a release happens
+
+Two conditions, both required:
+
+1. **Enough has accumulated that upgrading is worth someone's time.** A single bug fix, test or documentation
+   edit stays a local commit until there is a reason for others to update.
+2. **The maintainer agrees first.**
+
+This is not fussiness. The project once shipped 17 versions in six hours — one every 21 minutes on average,
+half of them fixing the previous one. That is `0.0.x` behaviour wearing a `1.0.x` number, and it left every
+intermediate state permanently downloadable.
+
 Chrome is installed in CI because the page-layer tests drive a real browser. **If Chrome fails to start in
 CI the tests fail rather than skip** — a skip would let `npm test` exit 0 with nothing verified. Skipping
 happens only on a machine without Chrome, and it says so.
