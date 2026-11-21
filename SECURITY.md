@@ -35,6 +35,8 @@ https://github.com/sizhe03/dsh-muse-media/security/advisories/new
 
 四条 HTTP 路由均先执行 DSH 的 `connection.requestRejection(req)` 访问检查。宿主拒绝请求时，插件直接返回宿主给出的 401 或 403。缺少该接口时，插件不开启这些路由。
 
+该接口自 `@deepseek-ai/dsh-client-connection@0.1.2-alpha.2` 起提供，Muse 支持的最低宿主版本 `0.2.2-rc.5` 的标准 Web 配置已包含它。
+
 | 路由 | 用途 | 通过宿主检查后的额外限制 |
 |---|---|---|
 | `/plugins/dsh-muse-media/quota` | 额度读数 | 仅 loopback |
