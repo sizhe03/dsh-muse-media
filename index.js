@@ -3221,22 +3221,39 @@ export function apply(ctx, config) {
   /* ---- routes ---- */
   const registerRoutes = (webCtx) => {
     const server = webCtx.get("webServer");
+    const connection = webCtx.get("connection");
     if (server === undefined || typeof server.register !== "function") return;
+    if (typeof connection?.requestRejection !== "function") return;
 
     webCtx.effect(() => {
       const disposers = [];
+      // DSH authenticates the requesting client before our narrower locality checks.
+      const register = ({ kind, path, handler }, localCheck = sameMachineRequest) =>
+        server.register({
+          kind, path,
+          handler(req, res) {
+            const rejection = connection.requestRejection(req);
+            if (rejection !== undefined) {
+              res.statusCode = rejection;
+              res.setHeader("cache-control", "no-store");
+              res.end();
+              return;
+            }
+            const allowed = localCheck(req);
+            if (!allowed.ok) return json(res, 403, { error: allowed.reason });
+            return handler(req, res);
+          },
+        });
 
       // A8 verbatim: loopback answers, everything else 403. The pill does not
       // call this route (it reads /accounts), so a LAN-only bind loses nothing
       // but this endpoint.
       disposers.push(
-        server.register({
+        register({
           kind: "exact",
           path: QUOTA_PATH,
           handler: async (req, res) => {
             if (req.method !== "GET") return json(res, 405, { error: "method not allowed" });
-            const allowed = loopbackRequest(req);
-            if (!allowed.ok) return json(res, 403, { error: allowed.reason });
             try {
               const url = new URL(req.url ?? "/", "http://127.0.0.1");
               const force = url.searchParams.get("force") === "1";
@@ -3252,17 +3269,15 @@ export function apply(ctx, config) {
               });
             }
           },
-        }),
+        }, loopbackRequest),
       );
 
       // Media playback: token-named files only, and only for this machine.
       disposers.push(
-        server.register({
+        register({
           kind: "prefix",
           path: MEDIA_ROUTE,
           handler: async (req, res) => {
-            const allowed = sameMachineRequest(req);
-            if (!allowed.ok) return json(res, 403, { error: allowed.reason });
             if (req.method !== "GET" && req.method !== "HEAD") {
               return json(res, 405, { error: "method not allowed" });
             }
@@ -3295,7 +3310,7 @@ export function apply(ctx, config) {
             res.setHeader("content-type", MIME_BY_EXT[extname(name).toLowerCase()] ?? "application/octet-stream");
             res.setHeader("content-length", String(size));
             res.setHeader("accept-ranges", "none");
-            res.setHeader("cache-control", "private, max-age=300");
+            res.setHeader("cache-control", "private, no-cache");
             if (req.method === "HEAD") {
               res.end();
               return;
@@ -3314,21 +3329,11 @@ export function apply(ctx, config) {
         }),
       );
 
-      const gate = (req, res) => {
-        const allowed = sameMachineRequest(req);
-        if (!allowed.ok) {
-          json(res, 403, { error: allowed.reason });
-          return false;
-        }
-        return true;
-      };
-
       disposers.push(
-        server.register({
+        register({
           kind: "exact",
           path: ACCOUNTS_PATH,
           handler: async (req, res) => {
-            if (!gate(req, res)) return;
             if (req.method !== "GET") return json(res, 405, { error: "method not allowed" });
             try {
               json(res, 200, runtime.snapshot());
@@ -3340,11 +3345,10 @@ export function apply(ctx, config) {
       );
 
       disposers.push(
-        server.register({
+        register({
           kind: "exact",
           path: ACCOUNTS_ACTION_PATH,
           handler: async (req, res) => {
-            if (!gate(req, res)) return;
             if (req.method !== "POST") return json(res, 405, { error: "method not allowed" });
             let body;
             try {
@@ -3452,8 +3456,7 @@ export function apply(ctx, config) {
     });
   };
 
-  if (ctx.get("webServer") !== undefined) registerRoutes(ctx);
-  else ctx.inject(["webServer"], (webCtx) => registerRoutes(webCtx));
+  ctx.inject(["webServer", "connection"], registerRoutes);
 
   /* ---- lifecycle ---- */
   ctx.effect(() => {

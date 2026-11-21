@@ -33,14 +33,14 @@ https://github.com/sizhe03/dsh-muse-media/security/advisories/new
 
 ## 本地服务
 
-插件在 Host 进程里注册了四条路由：
+四条 HTTP 路由均先执行 DSH 的 `connection.requestRejection(req)` 访问检查。宿主拒绝请求时，插件直接返回宿主给出的 401 或 403。缺少该接口时，插件不开启这些路由。
 
-| 路由 | 用途 | 访问限制 |
+| 路由 | 用途 | 通过宿主检查后的额外限制 |
 |---|---|---|
 | `/plugins/dsh-muse-media/quota` | 额度读数 | 仅 loopback |
-| `/plugins/dsh-muse-media/accounts` | 账号列表与状态 | 同源 |
+| `/plugins/dsh-muse-media/accounts` | 账号列表与状态 | 仅同机 |
 | `/plugins/dsh-muse-media/accounts/action` | 账号操作（增删、登录、刷新） | 仅同机 |
-| `/plugins/dsh-muse-media/media/<file>` | 已下载媒体 | 同源 |
+| `/plugins/dsh-muse-media/media/<file>` | 已下载媒体 | 仅同机 |
 
 `media` 路由只读、只服务插件自己下载的文件，路径按文件 ID 查表，不接受任意路径拼接。
 
