@@ -851,6 +851,7 @@ class MuseRuntime {
         raw: parsed.raw,
         at,
       };
+      const previous = this.#quotaCache.get(accountId);
       this.#quotaCache.set(accountId, { quota, at });
       this.#accounts.update(accountId, {
         quota: {
@@ -866,6 +867,7 @@ class MuseRuntime {
           error: undefined,
         },
       });
+      this.#recordMeasuredCost(previous, quota);
       return quota;
     } catch (error) {
       const failure = asFailure(error, { stage: "quota" });
@@ -1169,18 +1171,6 @@ class MuseRuntime {
       accountId: chosen.id,
       accountLabel: chosen.label,
     });
-    /**
-     * Freeze the allowance at the start of the task.
-     *
-     * The post-delivery read updates the cache, so without this snapshot the
-     * "before" figure would be overwritten and the cost of this generation would be
-     * unrecoverable. Taken from the cache only — a generation never waits for a
-     * quota read to begin.
-     */
-    const cachedBefore = this.#quotaCache.get(chosen.id)?.quota.usedPct;
-    if (typeof cachedBefore === "number") {
-      this.#tasks.update(task.id, { quotaBefore: cachedBefore });
-    }
 
     return this.runExclusive(
       `${kind === "video" ? "生视频" : "生图"} ${task.id}`,
@@ -1570,6 +1560,13 @@ class MuseRuntime {
           });
         }
 
+        // The page queue serializes submissions and panel samples for this account.
+        // A second send since the same sample makes the entire interval unattributable.
+        const sample = this.#quotaCache.get(account.id);
+        if (sample?.quota.ok) {
+          sample.singleTaskId = sample.singleTaskId === undefined ? task.id : null;
+        }
+
         /**
          * An unconfirmed action is already an unknown outcome.
          *
@@ -1723,24 +1720,8 @@ class MuseRuntime {
          * the queue's own settlement.
          */
         const accountId = account.id;
-        const taskId = task.id;
         setImmediate(() => {
-          void this.readQuota(accountId, { force: true, allowLaunch: false })
-            .then((quota) => {
-              /**
-               * Record what this generation cost.
-               *
-               * The read happens for the composer anyway; keeping its result on the
-               * task turns a stream of readings into a history — which is what makes
-               * "what is eating my weekly allowance" answerable without another page
-               * visit. `quotaBefore` was frozen at task start, so the pair survives
-               * the cache being overwritten.
-               */
-              if (typeof quota?.usedPct === "number") {
-                this.#tasks.update(taskId, { quotaAfter: quota.usedPct });
-              }
-            })
-            .catch(() => {});
+          void this.readQuota(accountId, { force: true, allowLaunch: false }).catch(() => {});
         });
 
         return {
@@ -1758,7 +1739,21 @@ class MuseRuntime {
     );
   }
 
-  /** Write the fetched bytes under the plugin's media directory. */
+  /** Attribute a pair of real weekly panel samples only if exactly one generation ran between them. */
+  #recordMeasuredCost(previous, quota) {
+    if (!previous?.singleTaskId) return;
+    const before = previous.quota;
+    if (!Number.isFinite(before.usedPct) || !Number.isFinite(quota.usedPct) ||
+        before.reset !== quota.reset || quota.usedPct < before.usedPct) return;
+    const task = this.#tasks.get(previous.singleTaskId);
+    if (task?.state !== TASK_STATE.DELIVERED && task?.state !== TASK_STATE.GENERATED_UNSAVED) return;
+    try {
+      this.#tasks.update(task.id, { quotaBefore: before.usedPct, quotaAfter: quota.usedPct });
+    } catch (error) {
+      this.#log(`任务 ${task.id} 的额度记录未能保存：${error}`);
+    }
+  }
+
   /**
    * Write one delivered file.
    *

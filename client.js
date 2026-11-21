@@ -1125,10 +1125,8 @@ window.__ModuleLoader__.load({
       /**
        * Cost of one task, when both readings exist.
        *
-       * `quotaBefore` is frozen at task start and `quotaAfter` comes from the read
-       * that follows a delivery, so the difference is this generation's share. A
-       * missing either side is reported as unknown rather than guessed — the panel
-       * reports whole percentages, so a small image can legitimately read as 0.
+       * New tasks receive both readings together when one submission can be
+       * attributed to their interval. Older or unmeasured tasks may lack either.
        */
       const cost = (task) =>
         typeof task.quotaBefore === "number" && typeof task.quotaAfter === "number"
