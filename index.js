@@ -1587,41 +1587,40 @@ class MuseRuntime {
         }
 
         /**
-         * The composer must hold the whole prompt, not a prefix of it.
+         * The composer must be holding the whole prompt before anything is sent.
          *
-         * A generation was once submitted with 324 of the 336 characters that had been passed in: the tail — the delivery
-         * spec and the follow-up note — never reached the page, and nothing noticed because the only check was "not
-         * empty". The result looked like a plugin that rewrites prompts.
+         * Measured through the snapshot, not through setPrompt's return value. That value is read immediately after the
+         * setter runs, before React reconciles — it reports what was written, not what the box ended up holding, so
+         * comparing it against the input proved nothing.
          *
-         * Length alone would still miss a same-length substitution, so the head is compared too. Both sides are normalised
-         * the same way, because the page collapses runs of whitespace and that must not read as a difference.
+         * Muse does not rewrite prompts. A box holding less than was written therefore means the loss happened during
+         * reconciliation, and the only way to see it is to look after the write has settled.
          */
-        if (promptResult.text !== undefined) {
+        const composerSnapshot = await page.snapshot();
+        const composerText = composerSnapshot?.composer?.text;
+        if (typeof composerText === "string") {
           const normalise = (text) => String(text).replace(/\s+/g, " ").trim();
           const expectedText = normalise(outgoing);
-          const written = normalise(promptResult.text);
+          const held = normalise(composerText);
           /**
-           * Compare the head **and** the tail.
-           *
-           * Length alone misses a same-length rewrite, and the head alone misses a rewrite that begins identically — which
-           * is what a tool summarising by paragraph would produce. The tail is where the reported loss actually happened:
-           * the delivery spec and the follow-up note lived in the last sentence.
+           * Three comparisons, because each catches a different loss: length catches truncation, the head catches a
+           * wholesale replacement, and the tail catches the reported case — the opening preserved, the last sentence gone.
            */
           const mismatched =
-            expectedText.length !== written.length ||
-            !written.startsWith(expectedText.slice(0, 40)) ||
-            !written.endsWith(expectedText.slice(-40));
+            expectedText.length !== held.length ||
+            !held.startsWith(expectedText.slice(0, 40)) ||
+            !held.endsWith(expectedText.slice(-40));
 
           if (mismatched) {
             throw new MuseFailure(
               `提示词没有完整进入输入框，已停止（没有提交）。` +
-                `期望 ${expectedText.length} 字，输入框里是 ${written.length} 字。` +
-                `这通常是上游页面截断或改写，把提示词缩短后重试即可；不要把这次结果当成生成失败。`,
+                `期望 ${expectedText.length} 字，输入框里是 ${held.length} 字。` +
+                `把提示词缩短后重试即可；不要把这次结果当成生成失败。`,
               {
                 code: "PROMPT_INCOMPLETE",
                 kind: FAILURE.INVALID,
                 stage: "composer",
-                diagnosticTail: `expected=${expectedText.slice(0, 60)}… got=${written.slice(0, 60)}…`,
+                diagnosticTail: `expected=${expectedText.slice(0, 60)}… got=${held.slice(0, 60)}…`,
               },
             );
           }

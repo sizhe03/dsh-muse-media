@@ -55,16 +55,16 @@ test("an empty composer is caught before this check, by length === 0", () => {
 });
 
 /* ---- the wiring must exist in both files ---- */
-test("the page returns what the textarea holds", () => {
-  const muse = readFileSync("lib/muse.js", "utf8");
-  assert.match(muse, /return \{ ok: true, length: \(textarea\.value \|\| ""\)\.length, text: textarea\.value \|\| "" \}/);
-  assert.match(muse, /text: result\.text/, "setPrompt must forward it");
-});
-
-test("the host refuses to send on a mismatch", () => {
+test("the check reads the composer after the write has settled", () => {
   const index = readFileSync("index.js", "utf8");
+
+  // The measurement must come from the snapshot, not from setPrompt's own return value: that value is read before React
+  // reconciles and reports what was written rather than what the box holds.
+  assert.match(index, /composerSnapshot\?\.composer\?\.text/, "must read the composer through a snapshot, tolerantly");
+  assert.doesNotMatch(index, /promptResult\.text/, "must not trust the pre-reconciliation echo");
+
   assert.match(index, /code: "PROMPT_INCOMPLETE"/);
-  assert.match(index, /promptResult\.text !== undefined/, "the check must be gated on the field existing");
-  assert.match(index, /expectedText\.length !== written\.length/, "length comparison present");
-  assert.match(index, /written\.startsWith\(expectedText\.slice\(0, 40\)\)/, "head comparison present");
+  assert.match(index, /expectedText\.length !== held\.length/, "length comparison present");
+  assert.match(index, /held\.startsWith\(expectedText\.slice\(0, 40\)\)/, "head comparison present");
+  assert.match(index, /held\.endsWith\(expectedText\.slice\(-40\)\)/, "tail comparison present");
 });
