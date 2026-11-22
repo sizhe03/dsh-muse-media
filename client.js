@@ -100,6 +100,8 @@ window.__ModuleLoader__.load({
       "settings.all": "全部",
       "settings.delivered": "已交付",
       "settings.unsaved": "本地保存失败",
+      "settings.quotaHigh": "接近用完",
+      "settings.quotaFull": "已用完",
       "settings.preview": "预览",
       "settings.hidePreview": "收起预览",
       "settings.zeroFilter": "没有这类生成记录。",
@@ -265,6 +267,8 @@ window.__ModuleLoader__.load({
       "settings.all": "All",
       "settings.delivered": "Delivered",
       "settings.unsaved": "Local save failed",
+      "settings.quotaHigh": "Nearly used up",
+      "settings.quotaFull": "Fully used",
       "settings.preview": "Preview",
       "settings.hidePreview": "Hide preview",
       "settings.zeroFilter": "No generations of this type.",
@@ -436,22 +440,6 @@ window.__ModuleLoader__.load({
 
     const MEDIA_BASE = "/plugins/dsh-muse-media/media/";
 
-    function MediaOpen({ name, kind, t }) {
-      const [open, setOpen] = useState(false);
-      const [failed, setFailed] = useState(false);
-      const src = MEDIA_BASE + encodeURIComponent(name);
-      return h("div", { className: "muse-preview" },
-        h("button", { type: "button", className: "muse-text-btn", "aria-expanded": open,
-          onClick: () => { setFailed(false); setOpen(!open); } }, t(open ? "settings.hidePreview" : "settings.preview")),
-        open && (failed
-          ? h("span", { role: "status", className: "muse-meta" }, t("settings.mediaMissing"))
-          : h(kind === "video" ? "video" : "img", {
-              className: "muse-preview-media", src, controls: kind === "video", alt: kind === "image" ? name : undefined,
-              onError: () => setFailed(true),
-            })),
-      );
-    }
-
     /** Bytes as a short human figure, for the disk line. */
     function formatBytes(bytes) {
       if (typeof bytes !== "number" || !Number.isFinite(bytes) || bytes < 0) return "\u2014";
@@ -597,14 +585,18 @@ window.__ModuleLoader__.load({
 .muse-filter{display:flex;width:fit-content;gap:2px;padding:3px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover);}
 .muse-filter button{padding:3px 12px;border-radius:6px;color:var(--muse-sub);}
 .muse-filter button[aria-pressed="true"]{background:var(--dsw-alias-bg-layer-1);color:var(--muse-ink);box-shadow:0 0 0 1px var(--muse-line);}
-.muse-record-head{align-items:baseline;}
+.muse-record-summary{display:flex;align-items:center;gap:10px;flex:1;min-width:0;}
+.muse-record-toggle{appearance:none;border:0;border-radius:6px;padding:0;background:transparent;
+  color:inherit;font:inherit;text-align:start;cursor:pointer;}
+.muse-record-toggle::after{content:"";width:7px;height:7px;flex:none;margin:0 6px;
+  border:solid var(--muse-sub);border-width:0 1.5px 1.5px 0;transform:rotate(45deg);}
+.muse-record-toggle[aria-expanded="true"]::after{transform:rotate(225deg);}
 .muse-thumb{display:grid;place-items:center;flex:none;width:42px;height:42px;background:var(--dsw-alias-interactive-bg-hover);border-radius:8px;overflow:hidden;color:var(--muse-sub);}
 .muse-thumb img{width:100%;height:100%;object-fit:cover;}
 .muse-record-head{align-items:center;}
 .muse-record-copy{flex:1;display:grid;gap:4px;min-width:0;}
 .muse-record-head .muse-state{flex:none;}
 .muse-preview{padding-inline-start:52px;display:grid;gap:8px;justify-items:start;}
-.muse-preview button{color:var(--muse-accent);}
 .muse-preview-media{max-width:100%;max-height:min(320px,50vh);border-radius:8px;}
 .muse-pane>.muse-btn{justify-self:start;}
 .muse-fields{margin:0;padding:0 16px;min-width:0;}
@@ -964,6 +956,8 @@ window.__ModuleLoader__.load({
           h("div", { className: "muse-allowance-line" },
             h("span", null, t("settings.scope")),
             h("strong", null, hasQuota ? t("pill.usedShort", { pct: quota.usedPct }) : t("settings.quotaNeverShort")),
+            tone === "high" && h("span", { className: "muse-meta" }, t("settings.quotaHigh")),
+            tone === "full" && h("span", { className: "muse-meta" }, t("settings.quotaFull")),
             quota?.stale && h("span", { className: "muse-meta" }, t("settings.quotaStale")),
             h("button", { type: "button", className: "muse-text-btn", disabled: disabled || busy,
               onClick: () => onAction("refresh-quota", account.id) }, t("settings.refreshShort"))),
@@ -1013,11 +1007,46 @@ window.__ModuleLoader__.load({
                 h("path", { d: "M3 4h18v16H3z M4 17l5-5 4 4 3-3 4 4 M15 8h.01" })));
     }
 
+    function HistoryRecord({ task, t, locale }) {
+      const [open, setOpen] = useState(false);
+      const [failed, setFailed] = useState(false);
+      const kind = t("settings." + (task.kind === "video" ? "video" : "image"));
+      const title = task.prompt || task.media || kind;
+      const cost = Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter) && task.quotaAfter >= task.quotaBefore
+        ? "+" + (task.quotaAfter - task.quotaBefore) + "%" : undefined;
+      const meta = [kind, task.account, relativeTime(task.at, locale),
+        task.durationMs && Math.round(task.durationMs / 1000) + "s", cost].filter(Boolean);
+      const states = { delivered: "delivered", failed: "stateFailed", unknown: "stateUnknown", "generated-unsaved": "unsaved" };
+      const summary = [
+        h(RecordThumbnail, { key: "thumb", task }),
+        h("span", { key: "copy", className: "muse-record-copy" }, h("strong", null, title),
+          h("span", { className: "muse-meta" }, meta.join(" · "))),
+      ];
+      const previewAction = t(open ? "settings.hidePreview" : "settings.preview");
+      return h("article", { className: "muse-record" },
+        h("div", { className: "muse-record-head" },
+          task.media
+            ? h("button", { type: "button", className: "muse-record-summary muse-record-toggle",
+                "aria-expanded": open, "aria-label": previewAction + " · " + title, title: previewAction,
+                onClick: () => { setFailed(false); setOpen(!open); } }, ...summary)
+            : h("div", { className: "muse-record-summary" }, ...summary),
+          h("span", { className: "muse-state", "data-tone": task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
+            t("settings." + (states[task.state] || "stateUnknown")))),
+        task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
+        task.references?.length > 0 && h("div", { className: "muse-meta" }, t("settings.refs") + " · " + task.references.join("、")),
+        task.media && open && h("div", { className: "muse-preview" },
+          failed ? h("span", { role: "status", className: "muse-meta" }, t("settings.mediaMissing")) :
+            h(task.kind === "video" ? "video" : "img", {
+              className: "muse-preview-media", src: MEDIA_BASE + encodeURIComponent(task.media),
+              controls: task.kind === "video", alt: task.kind === "image" ? title : undefined,
+              onError: () => setFailed(true),
+            })));
+    }
+
     function HistorySection({ history, t, locale }) {
       const [filter, setFilter] = useState("all");
       const [limit, setLimit] = useState(8);
       const filtered = history.filter((task) => filter === "all" || task.kind === filter);
-      const states = { delivered: "delivered", failed: "stateFailed", unknown: "stateUnknown", "generated-unsaved": "unsaved" };
       return h("section", { className: "muse-pane" },
         h("header", { className: "muse-list-head" },
           h("h4", null, t("settings.history")),
@@ -1026,23 +1055,8 @@ window.__ModuleLoader__.load({
           ["all", "image", "video"].map((key) => h("button", { type: "button", key, "aria-pressed": filter === key,
             onClick: () => { setFilter(key); setLimit(8); } }, t("settings." + key)))),
         filtered.length === 0 && h("p", { className: "muse-empty" }, t(history.length ? "settings.zeroFilter" : "settings.historyEmpty")),
-        filtered.length > 0 && h("div", { className: "muse-records" }, filtered.slice(0, limit).map((task) => {
-          const kind = t("settings." + (task.kind === "video" ? "video" : "image"));
-          const cost = Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter) && task.quotaAfter >= task.quotaBefore
-            ? "+" + (task.quotaAfter - task.quotaBefore) + "%" : undefined;
-          const meta = [kind, task.account, relativeTime(task.at, locale),
-            task.durationMs && Math.round(task.durationMs / 1000) + "s", cost].filter(Boolean);
-          return h("article", { key: task.id, className: "muse-record" },
-            h("div", { className: "muse-record-head" },
-              h(RecordThumbnail, { task }),
-              h("div", { className: "muse-record-copy" }, h("strong", null, task.prompt || task.media || kind),
-                h("span", { className: "muse-meta" }, meta.join(" · "))),
-              h("span", { className: "muse-state", "data-tone": task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
-                t("settings." + (states[task.state] || "stateUnknown")))),
-            task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
-            task.references?.length > 0 && h("div", { className: "muse-meta" }, t("settings.refs") + " · " + task.references.join("、")),
-            task.media && h(MediaOpen, { name: task.media, kind: task.kind, t }));
-        })),
+        filtered.length > 0 && h("div", { className: "muse-records" }, filtered.slice(0, limit).map((task) =>
+          h(HistoryRecord, { key: task.id, task, t, locale }))),
         filtered.length > 8 && h("button", { type: "button", className: "muse-btn", onClick: () => setLimit(limit === 8 ? filtered.length : 8) },
           t(limit === 8 ? "settings.showAll" : "settings.less")));
     }
