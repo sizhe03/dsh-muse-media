@@ -1587,6 +1587,47 @@ class MuseRuntime {
         }
 
         /**
+         * The composer must hold the whole prompt, not a prefix of it.
+         *
+         * A generation was once submitted with 324 of the 336 characters that had been passed in: the tail — the delivery
+         * spec and the follow-up note — never reached the page, and nothing noticed because the only check was "not
+         * empty". The result looked like a plugin that rewrites prompts.
+         *
+         * Length alone would still miss a same-length substitution, so the head is compared too. Both sides are normalised
+         * the same way, because the page collapses runs of whitespace and that must not read as a difference.
+         */
+        if (promptResult.text !== undefined) {
+          const normalise = (text) => String(text).replace(/\s+/g, " ").trim();
+          const expectedText = normalise(outgoing);
+          const written = normalise(promptResult.text);
+          /**
+           * Compare the head **and** the tail.
+           *
+           * Length alone misses a same-length rewrite, and the head alone misses a rewrite that begins identically — which
+           * is what a tool summarising by paragraph would produce. The tail is where the reported loss actually happened:
+           * the delivery spec and the follow-up note lived in the last sentence.
+           */
+          const mismatched =
+            expectedText.length !== written.length ||
+            !written.startsWith(expectedText.slice(0, 40)) ||
+            !written.endsWith(expectedText.slice(-40));
+
+          if (mismatched) {
+            throw new MuseFailure(
+              `提示词没有完整进入输入框，已停止（没有提交）。` +
+                `期望 ${expectedText.length} 字，输入框里是 ${written.length} 字。` +
+                `这通常是上游页面截断或改写，把提示词缩短后重试即可；不要把这次结果当成生成失败。`,
+              {
+                code: "PROMPT_INCOMPLETE",
+                kind: FAILURE.INVALID,
+                stage: "composer",
+                diagnosticTail: `expected=${expectedText.slice(0, 60)}… got=${written.slice(0, 60)}…`,
+              },
+            );
+          }
+        }
+
+        /**
          * Last look at the account's health before the send boundary.
          *
          * Preparation takes real time — opening the page, verifying the session, uploading
@@ -1623,13 +1664,16 @@ class MuseRuntime {
           });
         }
 
-        const send = await page.sendOnce();
+        const send = await page.sendOnce({ expectedPrompt: outgoing });
         if (!send.fired) {
+          const note = send.reason === "prompt-mismatch"
+            ? "Muse 输入框正文与本次工具提示词不一致，已停止发送。"
+            : `发送动作未触发（${send.reason ?? "unknown"}），本次没有提交。`;
           this.#tasks.update(task.id, {
             state: TASK_STATE.FAILED,
-            note: `发送动作未触发（${send.reason ?? "unknown"}）`,
+            note,
           });
-          throw new MuseFailure(`发送动作未触发（${send.reason ?? "unknown"}），本次没有提交。`, {
+          throw new MuseFailure(note, {
             code: "SEND_NOT_FIRED",
             kind: FAILURE.SHARED,
             stage: "send",
@@ -2876,6 +2920,11 @@ function toolTimeout(runtime, kind) {
   return generationBudget(runtime.settings(), kind);
 }
 
+const GENERATION_BRIEF_GUIDANCE =
+  "用户已提供生成提示词时，把完整生成要求按原文传入 prompt，保留段落、用途、名称、像素尺寸、格式、色彩空间和禁止项。" +
+  "跨模型对比或续问其他模型时，沿用用户最初的完整生成要求，并纳入后续明确修改。请勿用之前某个工具的摘要替代原文。" +
+  "size 等单独参数不能替代正文里的交付规格；上游能否满足这些规格需以成品为准。";
+
 function imageTool(runtime) {
   return {
     name: "muse_draw_image",
@@ -2894,7 +2943,7 @@ function imageTool(runtime) {
       properties: {
         prompt: {
           type: "string",
-          description: "画面描述。写清主体、风格、构图、光线；中文或英文都可以。",
+          description: GENERATION_BRIEF_GUIDANCE + "用户只给简短创意时，可补充主体、构图和光线。",
         },
         size: {
           type: "string",
@@ -3029,7 +3078,7 @@ function videoTool(runtime) {
       properties: {
         prompt: {
           type: "string",
-          description: "画面描述。写清主体、动作、镜头与光线；时长也写在这里。",
+          description: GENERATION_BRIEF_GUIDANCE + "保留时长、首帧、动作与镜头要求。",
         },
         image: {
           /**

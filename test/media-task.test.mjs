@@ -11,7 +11,7 @@ import { TaskStore } from "../lib/store.js";
 
 // Exercise the registered tools and the on-disk journal, replacing just the host
 // services and browser I/O. Each test owns its data directory and page state.
-function fixture(t) {
+function fixture(t, config = {}) {
   const home = mkdtempSync(join(tmpdir(), "muse-task-"));
   const root = join(home, "muse-media");
   mkdirSync(root);
@@ -47,7 +47,7 @@ function fixture(t) {
   apply({
     get: (name) => services[name], inject() {},
     effect(fn) { const cleanup = fn(); if (typeof cleanup === "function") cleanups.push(cleanup); },
-  }, { homeDir: home, autoRefreshQuotaSeconds: 0 });
+  }, { homeDir: home, autoRefreshQuotaSeconds: 0, ...config });
   t.after(async () => {
     await nextTurn();
     for (const cleanup of cleanups.reverse()) await cleanup();
@@ -55,7 +55,7 @@ function fixture(t) {
   });
   return {
     state, root, page,
-    draw: () => registry.get("muse_draw_image").execute({ prompt: "test" }),
+    draw: (prompt = "test") => registry.get("muse_draw_image").execute({ prompt }),
     video: () => registry.get("muse_draw_video").execute({ prompt: "test" }),
     quota: () => registry.get("muse_quota").execute({}),
     tasks: () => new TaskStore(join(root, "tasks.json")).load().list(),
@@ -63,6 +63,22 @@ function fixture(t) {
 }
 
 const image = { bytes: Buffer.from("offline result"), mime: "image/png", kind: "image" };
+
+for (const enabled of [false, true]) {
+  test(`the full image brief reaches the send boundary with independent generation ${enabled}`, async (t) => {
+    const f = fixture(t, { independentGeneration: enabled });
+    const brief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
+    let written, expected;
+    f.page("setPrompt", async (text) => { written = text; return { length: text.length }; });
+    f.page("sendOnce", async (options) => { expected = options?.expectedPrompt; return { fired: true }; });
+    f.page("waitMedia", async () => image);
+    await f.draw(brief);
+    assert.equal(f.tasks()[0].prompt, brief);
+    if (enabled) assert.ok(written.startsWith("请独立") && written.endsWith("\n\n" + brief));
+    else assert.equal(written, brief);
+    assert.equal(expected, written);
+  });
+}
 
 test("a failed post-delivery read cannot turn a cached percentage into a measured cost", async (t) => {
   const f = fixture(t);

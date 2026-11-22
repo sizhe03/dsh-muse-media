@@ -128,6 +128,25 @@ test("waitMedia waits past a sibling upload preview and delivers the assistant's
   assert.ok(samples >= 2);
 });
 
+test("media send checks the whole composer, including edits of equal length", async (t) => {
+  if (!handle) return t.skip("no Chrome on this machine");
+  const expectedPrompt = "请独立生成。\r\n\r\n@audio88 烟紫卡带 🎮，4096 × 4096，PNG，sRGB。";
+  const page = new MusePage(handle);
+  await run('<body><textarea></textarea><button aria-label="Send" onclick="window.sent++">Send</button></body>',
+    () => { window.sent = 0; });
+  await page.setPrompt(expectedPrompt);
+  for (const altered of [expectedPrompt.replace("PNG", "JPG"), expectedPrompt.slice(0, -9)]) {
+    await handle.js("document.querySelector('textarea').value = " + JSON.stringify(altered));
+    assert.equal((await page.sendOnce({ expectedPrompt })).fired, false);
+  }
+  assert.equal(await handle.js("window.sent"), 0);
+  await page.setPrompt(expectedPrompt);
+  assert.equal((await page.sendOnce({ expectedPrompt })).fired, true);
+  assert.equal(await handle.js("window.sent"), 1);
+  await handle.js("document.querySelector('button').remove();document.querySelector('textarea').value='partial'");
+  assert.equal((await page.sendOnce({ expectedPrompt })).fired, false, "a mismatch also prevents Enter");
+});
+
 test("pageReady reports a missing composer", async (t) => {
   if (handle === undefined) return t.skip("no Chrome on this machine");
   assert.equal(await run("<body><p>nothing</p></body>", pageReady), "no-composer");
