@@ -58,6 +58,37 @@ While idle the pill shows **the account you are looking at**; the next generatio
 
 A copy installed from a local directory (`file:` / `link:`) is never marked updatable, because its code is on your disk. Run `npm install dsh-muse-media` again to move forward.
 
+## When the output looks wrong
+
+**The plugin does not transcode.** It writes the bytes Muse returned, unchanged: no ffmpeg, no resizing, no re-encoding. A "low quality output" therefore almost always happens after the plugin.
+
+Three checks, ten seconds:
+
+**1. What did the plugin actually write?**
+
+```powershell
+$tasks = Get-Content "$env:USERPROFILE\.dsh\muse-media\tasks.json" -Raw | ConvertFrom-Json
+$tasks.tasks | Where-Object { $_.media } | Select-Object -First 1 -ExpandProperty media
+```
+
+That path is the file this plugin produced.
+
+**2. Compare fingerprints**
+
+```powershell
+Get-FileHash 'your-file.mp4' -Algorithm SHA256
+Get-FileHash "<the path from step 1>" -Algorithm SHA256
+```
+
+Equal → the plugin is not the problem; something downstream changed the file.
+Different → that file did not come from this plugin.
+
+**3. Read the resolution**
+
+Explorer → right-click → Properties → Details → Frame width / Frame height. Muse currently returns square video; the plugin stores whatever size it is given.
+
+**A common false positive**: players and preview tools generate low-resolution cache copies under similar names. The fingerprint comparison above rules that out immediately.
+
 ## What it costs
 
 Every generation really spends that account's Muse allowance, exactly as clicking in the web UI would. The same prompt produces a different result twice — there is no seed upstream and the plugin does not offer one. A rate limit or an exhausted allowance stops the task; the plugin will not quietly switch accounts, with one exception: an expired sign-in.

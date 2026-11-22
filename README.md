@@ -57,6 +57,37 @@ Muse 没有独立的视频模式：界面上只有一个对话框，「生成视
 
 空闲时胶囊显示的是**你正在查看的账号**，下一次生成可能选另一个。悬停会说明这一点。
 
+## 画质异常时先查这里
+
+**插件不转码。** 它把 Muse 返回的字节原样写盘：没有 ffmpeg、没有缩放、没有重编码。所以「输出画质低」几乎总是发生在插件之后。
+
+三步确认，十秒：
+
+**一、看插件最后写了什么文件**
+
+```powershell
+$tasks = Get-Content "$env:USERPROFILE\.dsh\muse-media\tasks.json" -Raw | ConvertFrom-Json
+$tasks.tasks | Where-Object { $_.media } | Select-Object -First 1 -ExpandProperty media
+```
+
+这个路径指向的文件，才是插件产出的。
+
+**二、对比指纹**
+
+```powershell
+Get-FileHash '你手上的文件.mp4' -Algorithm SHA256
+Get-FileHash "<上一步得到的路径>" -Algorithm SHA256
+```
+
+一致 → 插件没问题，中间某一步改过文件。
+不一致 → 那不是插件的产出。
+
+**三、读分辨率**
+
+资源管理器 → 右键 → 属性 → 详细信息 → 帧宽度 / 帧高度。Muse 当前的视频输出是**方形**，插件存的就是它给的尺寸。
+
+**常见误判**：播放器或预览工具会生成低分辨率缓存副本，文件名相近，容易当成原片。上一步的指纹对比能直接排除。
+
 ## 会消耗额度
 
 每次生成都真实消耗该账号的 Muse 额度，和你在网页上手动点一次一样。
