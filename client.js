@@ -87,6 +87,29 @@ window.__ModuleLoader__.load({
     /* ---------------- copy ---------------- */
 
     const ZH = {
+      "settings.manage": "管理账号",
+      "settings.closeDetails": "收起管理",
+      "settings.availability": "暂不可用",
+      "settings.generationSettings": "生成与显示",
+      "settings.execution": "浏览器与等待时间",
+      "settings.retryAccounts": "每项任务最多尝试的账号数",
+      "settings.retryHint": "仅在确认登录失效时切换账号。",
+      "settings.accountCount": "已添加 {count} 个账号",
+      "settings.image": "图片",
+      "settings.video": "视频",
+      "settings.all": "全部",
+      "settings.delivered": "已交付",
+      "settings.unsaved": "本地保存失败",
+      "settings.preview": "预览",
+      "settings.hidePreview": "收起预览",
+      "settings.zeroFilter": "没有这类生成记录。",
+      "settings.refs": "参考素材",
+      "settings.scope": "周额度",
+      "settings.pendingChanges": "有未保存的更改",
+      "settings.emptyAccount": "添加 Muse 账号后，打开登录窗口完成首次登录。",
+      "settings.mediaMissing": "媒体文件不可用",
+      "settings.updated": "额度更新",
+      "settings.historyCount": "最近 {count} 条",
       "pill.label": "Muse",
       "pill.used": "周额度已用 {pct}%",
       "pill.unknown": "待刷新",
@@ -130,20 +153,21 @@ window.__ModuleLoader__.load({
       "settings.paneHistory": "记录",
       "settings.paneAdvanced": "高级",
       "settings.historyEmpty": "还没有生成记录。",
-      "settings.historyImages": "张图",
-      "settings.historyVideos": "段视频",
-      "settings.historyCost": "本周额度消耗",
       "settings.showAll": "显示全部",
       "settings.stateUnknown": "结果未知",
       "settings.stateFailed": "未完成",
       "settings.stateUnsaved": "已生成，本地保存失败；请到该账号的 Muse 会话取回",
-      "settings.advanced": "高级设置",
       "settings.save": "保存",
       "settings.saved": "已保存",
       "settings.discard": "放弃",
-      "settings.savedKeys": "已保存：{keys}",
       "settings.fieldHeadless": "生成时不显示窗口",
       "settings.fieldHeadlessHint": "关掉会弹出浏览器窗口，只在首次登录时才有必要。",
+      "settings.openBrowser": "打开浏览器",
+      "settings.opening": "正在打开…",
+      "settings.openMediaDir": "打开媒体文件夹",
+      "settings.fieldIndependent": "独立生成",
+      "settings.fieldIndependentHint":
+        "生成时提醒 Muse 以本次描述和参考素材为准。长期记忆仍然开启。",
       "settings.fieldPill": "在输入框显示额度",
       "settings.fieldPillHint": "在对话输入框旁边显示本周已用百分比。",
       "settings.fieldIdle": "空闲回收（秒）",
@@ -154,7 +178,6 @@ window.__ModuleLoader__.load({
       "settings.fieldRefreshHint": "0 关闭后台刷新；生成结束时总会刷新一次。",
       "settings.fieldImageTimeout": "生图超时（秒）",
       "settings.fieldVideoTimeout": "生视频超时（秒）",
-      "settings.needsRestartHint": "改动会立即生效，无需重启。",
       "settings.diagnostics": "诊断",
       "settings.diagState": "状态目录",
       "settings.diagTasks": "任务记录",
@@ -184,7 +207,7 @@ window.__ModuleLoader__.load({
       "settings.loginClosed": "登录窗口已关闭。需要时再点「打开登录窗口」。",
       "settings.verify": "验证登录",
       "settings.verifyPending": "正在验证…",
-      "settings.test": "测试",
+      "settings.test": "测试连通性",
       "settings.testPending": "测试中…",
       "settings.select": "同条件时优先",
       "settings.selected": "优先",
@@ -229,6 +252,29 @@ window.__ModuleLoader__.load({
     };
 
     const EN = {
+      "settings.manage": "Manage account",
+      "settings.closeDetails": "Close controls",
+      "settings.availability": "Unavailable",
+      "settings.generationSettings": "Generation & display",
+      "settings.execution": "Browser & timeouts",
+      "settings.retryAccounts": "Account attempts per task",
+      "settings.retryHint": "Switches accounts only after a confirmed sign-out.",
+      "settings.accountCount": "{count} accounts added",
+      "settings.image": "Image",
+      "settings.video": "Video",
+      "settings.all": "All",
+      "settings.delivered": "Delivered",
+      "settings.unsaved": "Local save failed",
+      "settings.preview": "Preview",
+      "settings.hidePreview": "Hide preview",
+      "settings.zeroFilter": "No generations of this type.",
+      "settings.refs": "References",
+      "settings.scope": "Weekly allowance",
+      "settings.pendingChanges": "Unsaved changes",
+      "settings.emptyAccount": "Add a Muse account, then open its browser to sign in.",
+      "settings.mediaMissing": "Media unavailable",
+      "settings.updated": "Usage updated",
+      "settings.historyCount": "{count} recent tasks",
       "pill.label": "Muse",
       "pill.used": "{pct}% weekly used",
       "pill.unknown": "Refresh needed",
@@ -263,20 +309,21 @@ window.__ModuleLoader__.load({
       "settings.paneHistory": "History",
       "settings.paneAdvanced": "Advanced",
       "settings.historyEmpty": "Nothing generated yet.",
-      "settings.historyImages": "images",
-      "settings.historyVideos": "videos",
-      "settings.historyCost": "allowance used this week",
       "settings.showAll": "Show all",
       "settings.stateUnknown": "unknown",
       "settings.stateFailed": "did not finish",
       "settings.stateUnsaved": "Generated, local save failed. Retrieve it from this account’s Muse chat.",
-      "settings.advanced": "Advanced",
       "settings.save": "Save",
       "settings.saved": "Saved",
       "settings.discard": "Discard",
-      "settings.savedKeys": "Saved: {keys}",
       "settings.fieldHeadless": "Run generations headless",
       "settings.fieldHeadlessHint": "Turning this off opens a browser window for every generation.",
+      "settings.openBrowser": "Open browser",
+      "settings.opening": "Opening…",
+      "settings.openMediaDir": "Open the media folder",
+      "settings.fieldIndependent": "Ask for an independent generation each time",
+      "settings.fieldIndependentHint":
+        "When on, every generation is prefixed with ‘use this description and these references; do not carry over characters, scenes, composition or style from earlier conversations or work'. Muse's long-term memory stays on — this only stops it continuing from last time.",
       "settings.fieldPill": "Show usage beside the composer",
       "settings.fieldPillHint": "Display the weekly percentage next to the message box.",
       "settings.fieldIdle": "Reap an idle browser after (s)",
@@ -287,7 +334,6 @@ window.__ModuleLoader__.load({
       "settings.fieldRefreshHint": "0 disables background refresh; a delivery still refreshes once.",
       "settings.fieldImageTimeout": "Image timeout (s)",
       "settings.fieldVideoTimeout": "Video timeout (s)",
-      "settings.needsRestartHint": "Changes apply immediately; no restart needed.",
       "settings.diagnostics": "Diagnostics",
       "settings.diagState": "State directory",
       "settings.diagTasks": "Task records",
@@ -317,7 +363,7 @@ window.__ModuleLoader__.load({
       "settings.loginClosed": "The sign-in window was closed. Open it again when you are ready.",
       "settings.verify": "Verify sign-in",
       "settings.verifyPending": "Verifying...",
-      "settings.test": "Test",
+      "settings.test": "Test connection",
       "settings.testPending": "Testing...",
       "settings.select": "Prefer when tied",
       "settings.selected": "Preferred",
@@ -386,6 +432,24 @@ window.__ModuleLoader__.load({
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
+    }
+
+    const MEDIA_BASE = "/plugins/dsh-muse-media/media/";
+
+    function MediaOpen({ name, kind, t }) {
+      const [open, setOpen] = useState(false);
+      const [failed, setFailed] = useState(false);
+      const src = MEDIA_BASE + encodeURIComponent(name);
+      return h("div", { className: "muse-preview" },
+        h("button", { type: "button", className: "muse-text-btn", "aria-expanded": open,
+          onClick: () => { setFailed(false); setOpen(!open); } }, t(open ? "settings.hidePreview" : "settings.preview")),
+        open && (failed
+          ? h("span", { role: "status", className: "muse-meta" }, t("settings.mediaMissing"))
+          : h(kind === "video" ? "video" : "img", {
+              className: "muse-preview-media", src, controls: kind === "video", alt: kind === "image" ? name : undefined,
+              onError: () => setFailed(true),
+            })),
+      );
     }
 
     /** Bytes as a short human figure, for the disk line. */
@@ -462,179 +526,115 @@ window.__ModuleLoader__.load({
 .muse-tip-row{display:flex;justify-content:space-between;gap:12px;}
 .muse-tip-key{color:var(--dsw-alias-label-secondary);flex:none;}
 
-.muse-card{display:flex;flex-direction:column;gap:16px;padding:8px 0;min-width:0;
-  font-size:14px;line-height:22px;color:var(--dsw-alias-label-primary);}
-.muse-head{display:flex;flex-direction:column;gap:8px;}
-.muse-card h3{margin:0;line-height:24px;font-size:16px;font-weight:500;}
-.muse-card p{font-size:14px;margin:0;color:var(--dsw-alias-label-secondary);line-height:22px;}
-.muse-card-actions,.muse-actions-more{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0;}
-.muse-btn{appearance:none;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
-  font:inherit;color:var(--dsw-alias-label-primary);background:transparent;cursor:pointer;
-  min-height:36px;padding:0 14px;border:.5px solid var(--dsw-alias-border-l3);border-radius:var(--dsw-radius-md,12px);}
-.muse-btn:not(:disabled):hover{background:var(--dsw-alias-interactive-bg-hover);}
-.muse-btn--quiet{border-color:transparent;}
-.muse-btn--primary{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground);
-  border-color:transparent;font-weight:500;}
-.muse-btn--primary:not(:disabled):hover{background:var(--dsw-alias-button-primary-hover);}
-.muse-btn--danger,.muse-btn--danger-quiet:not(:disabled):hover{color:var(--dsw-alias-state-error-primary);}
-.muse-btn:focus-visible,.muse-switch:focus-visible{outline:2px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:2px;}
-.muse-btn:disabled{opacity:.5;cursor:not-allowed;}
-.muse-input{all:unset;box-sizing:border-box;line-height:20px;font-size:14px;padding:5px 8px;border-radius:6px;
-  border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-1);
-  color:var(--dsw-alias-label-primary);min-width:150px;}
-.muse-input:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;}
-.muse-steps{margin:6px 0 0;padding-left:20px;font-size:13px;line-height:20px;
-  color:var(--dsw-alias-label-secondary);}
-.muse-steps li{margin:2px 0;}
-.muse-card-steps{margin:6px 0;}
-/* The pane header: what the list is, and the one action that changes it. Sized like the
-   Host's own row labels (14px) so it lines up with the navigation column beside it. */
-.muse-list-head{display:flex;align-items:center;gap:12px;justify-content:space-between;}
-.muse-list-title{margin:0;font-size:14px;line-height:22px;font-weight:600;
-  color:var(--dsw-alias-label-primary);}
-.muse-list{display:flex;flex-direction:column;}
-.muse-row{display:flex;flex-direction:column;gap:6px;padding:16px 0 14px;
-  border-top:.5px solid var(--dsw-alias-border-l2);}
-.muse-row:last-child{padding-bottom:0;}
-.muse-row .muse-card-actions{margin-top:4px;}
-.muse-row .muse-btn{min-height:30px;padding:0 10px;font-size:13px;}
-/* Identity on the left, the figure on the right: the two things a user scans for. */
-.muse-row-main{display:flex;align-items:flex-start;gap:12px;}
-.muse-row-ident{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 auto;}
-.muse-row-name{line-height:22px;font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.muse-row-tags{display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
-/* The allowance figure. Deliberately the largest thing in the row. */
-/* A button that reads as a figure: no chrome of its own, but a hover surface so the
-   refresh action is discoverable. Flex is re-declared after the reset, which clears it. */
-.muse-row-quota{all:unset;cursor:pointer;box-sizing:border-box;flex:0 0 auto;
-  display:flex;flex-direction:column;align-items:flex-end;gap:0;
-  min-width:56px;line-height:1;padding:2px 4px;border-radius:6px;}
-.muse-row-quota:hover{background:var(--dsw-alias-bg-layer-2);}
-.muse-row-quota:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;}
-.muse-row-quota[disabled]{cursor:default;opacity:.6;}
-.muse-row-quota[disabled]:hover{background:transparent;}
-.muse-quota-value{font-size:20px;font-weight:600;line-height:26px;letter-spacing:-0.01em;
-  color:var(--dsw-alias-label-primary);font-variant-numeric:tabular-nums;}
-/* Figure and action on one line: the number is what the click changes, so the label sits
-   beside it rather than under it. */
-.muse-quota-line{display:flex;align-items:baseline;gap:6px;}
-.muse-quota-action{font-size:12px;line-height:18px;
-  color:color-mix(in srgb, var(--dsw-alias-brand-primary) 78%, transparent);}
-.muse-row-quota:hover .muse-quota-action{color:var(--dsw-alias-brand-primary);}
-.muse-quota-label{font-size:12px;line-height:16px;margin-top:2px;
-  color:var(--dsw-alias-label-secondary);white-space:nowrap;}
-/* Colour follows how much is LEFT, so a spent allowance reads as a warning at a
-   glance and matches the composer pill's thresholds. */
-.muse-row-quota[data-tone="high"] .muse-quota-value{color:var(--dsw-alias-state-warn-primary);}
-.muse-row-quota[data-tone="full"] .muse-quota-value{color:var(--dsw-alias-state-warn-primary);}
-.muse-row-quota[data-tone="none"] .muse-quota-value{font-size:12px;font-weight:500;
-  color:var(--dsw-alias-label-secondary);}
-.muse-row-context{line-height:22px;font-size:14px;margin-top:-2px;}
-/* Pills, not boxes: a 999px radius is why the reference's tags read as labels rather
-   than as tiny buttons. */
-.muse-tag{font-size:12px;padding:1px 8px;border-radius:999px;
-  border:1px solid var(--dsw-alias-border-l1);
-  color:var(--dsw-alias-label-secondary);white-space:nowrap;line-height:1.6;}
-/* Colour marks the exception. A working account is the norm, so it is quiet: a filled
-   dot rather than a coloured outline, and no bold. */
-.muse-tag--ok{color:var(--dsw-alias-label-secondary);border-color:transparent;
-  background:var(--dsw-alias-bg-layer-2);}
-.muse-tag--ok::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;
-  margin-right:4px;vertical-align:1px;background:var(--dsw-alias-state-success-primary);}
-/* A setup gap is neutral, not a warning: nothing is wrong yet. */
-.muse-tag--warn{color:var(--dsw-alias-label-secondary);border-color:var(--dsw-alias-border-l2);}
-/* These two earn their colour: they mean "needs you now". */
-.muse-tag--bad{color:var(--dsw-alias-state-error-primary);border-color:currentColor;}
-.muse-tag--sel{color:var(--dsw-alias-brand-primary);border-color:currentColor;font-weight:500;}
-.muse-meta{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:18px;}
-/* A titled block inside the card: same rhythm as the account list, one step quieter
-   than the page title so the hierarchy reads at a glance. */
-/* Tab strip: an underline row, not pills. It sits under the page intro and reads as a
-   filter over the same page rather than a second navigation level. */
-.muse-tabs{display:flex;align-items:center;gap:4px;margin:2px 0 0;
-  border-bottom:1px solid var(--dsw-alias-border-l1);}
-.muse-tab{all:unset;cursor:pointer;padding:6px 10px;font-size:14px;line-height:20px;
-  color:var(--dsw-alias-label-secondary);border-bottom:2px solid transparent;
-  margin-bottom:-1px;border-radius:4px 4px 0 0;white-space:nowrap;}
-.muse-tab:hover{color:var(--dsw-alias-label-primary);
-  background:var(--dsw-alias-bg-layer-2);}
-.muse-tab[data-active="true"]{color:var(--dsw-alias-label-primary);font-weight:600;
-  border-bottom-color:var(--dsw-alias-brand-primary);}
-.muse-tab:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-2px;}
-
-.muse-section,.muse-foot{min-width:0;display:flex;flex-direction:column;gap:12px;padding:12px 16px;
-  border:.5px solid var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l4));
-  border-radius:var(--dsw-radius-xl,20px);background:var(--dsw-alias-settings-card-fill,var(--dsw-alias-bg-layer-2));}
-.muse-section--settings{padding:0;border:0;border-radius:0;background:transparent;gap:0;}
-.muse-section-title{margin:0;line-height:22px;font-size:14px;font-weight:600;letter-spacing:0.01em;
-  color:var(--dsw-alias-label-primary);}
-
-/* Week summary: three figures with their labels, aligned like the account quota. */
-.muse-facts{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;}
-.muse-fact{display:flex;align-items:baseline;gap:4px;line-height:18px;font-size:12px;
-  color:var(--dsw-alias-label-secondary);}
-.muse-fact strong{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);
-  font-variant-numeric:tabular-nums;}
-
-/* One generation per row: kind, when and which account, then cost. */
-.muse-history{display:flex;flex-direction:column;border-top:.5px solid var(--dsw-alias-border-l2);}
-.muse-history-row{display:flex;align-items:center;gap:10px;min-height:40px;padding:6px 0;box-sizing:border-box;
-  line-height:20px;font-size:14px;color:var(--dsw-alias-label-primary);}
-.muse-history-row + .muse-history-row{border-top:.5px solid var(--dsw-alias-border-l2);}
-.muse-history-kind{flex:0 0 auto;font-size:12px;color:var(--dsw-alias-label-secondary);}
-.muse-history-main{display:flex;align-items:baseline;gap:8px;flex:1 1 auto;min-width:0;}
-.muse-history-when{color:var(--dsw-alias-label-primary);white-space:nowrap;}
-.muse-history-acct{color:var(--dsw-alias-label-primary);overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap;}
-.muse-history-meta{flex:0 0 auto;font-variant-numeric:tabular-nums;
-  color:var(--dsw-alias-label-primary);}
-
-.muse-fields{display:flex;flex-direction:column;}
-.muse-field{display:flex;align-items:center;justify-content:space-between;gap:24px;
-  min-width:0;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2);}
-.muse-field-copy{display:flex;flex-direction:column;gap:4px;min-width:0;}
-.muse-field-label{font-size:14px;line-height:20px;color:var(--dsw-alias-label-primary);}
-.muse-field-hint{font-size:12px;line-height:18px;color:var(--dsw-alias-label-secondary);}
-.muse-input--num{width:84px;min-width:0;flex:none;text-align:end;font-variant-numeric:tabular-nums;}
-.muse-switch{appearance:none;position:relative;flex:none;box-sizing:border-box;width:36px;height:22px;margin:0;
-  border:1px solid var(--dsw-alias-border-l3);border-radius:11px;background:var(--dsw-alias-bg-overlay);cursor:pointer;}
-.muse-switch::before{content:"";position:absolute;inset-block-start:2px;inset-inline-start:2px;width:16px;height:16px;
-  border-radius:50%;background:var(--dsw-alias-switch-thumb);box-shadow:0 1px 3px var(--dsw-alias-border-l4);}
+.muse-card {
+  --muse-line:var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l3));
+  --muse-panel:var(--dsw-alias-settings-card-fill,var(--dsw-alias-bg-layer-2));
+  --muse-ink:var(--dsw-alias-label-primary);
+  --muse-sub:var(--dsw-alias-label-secondary);
+  --muse-accent:var(--dsw-alias-brand-primary);
+  container-type:inline-size;display:flex;flex-direction:column;gap:18px;min-width:0;
+  color:var(--muse-ink);font:inherit;font-size:14px;line-height:1.5;padding:6px 0 20px;
+}
+.muse-card *, .muse-card *::before, .muse-card *::after{box-sizing:border-box;}
+.muse-card :is(h3,h4,h5,p,dl,dd){margin:0;}
+.muse-card h3{display:flex;align-items:center;gap:9px;font-size:21px;line-height:30px;font-weight:600;letter-spacing:-.02em;}
+.muse-card h4{font-size:15px;font-weight:600;line-height:24px;color:var(--muse-ink);}
+.muse-head{display:grid;gap:16px;}
+.muse-tabs{display:flex;gap:20px;border-bottom:1px solid var(--muse-line);}
+.muse-tab,.muse-text-btn,.muse-filter button{appearance:none;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;}
+.muse-tab{position:relative;padding:0 3px 10px;color:var(--muse-sub);font-weight:500;}
+.muse-tab[data-active="true"]{color:var(--muse-ink);}
+.muse-tab[data-active="true"]::after{content:"";position:absolute;height:2px;inset:auto 0 -1px;background:var(--muse-accent);border-radius:2px;}
+.muse-section,.muse-pane{display:grid;gap:13px;min-width:0;}
+.muse-list-head,.muse-account-top,.muse-record-head,.muse-allowance-line,.muse-foot-row,.muse-savebar{display:flex;align-items:center;gap:10px;min-width:0;}
+.muse-list-head,.muse-record-head,.muse-foot-row{justify-content:space-between;}
+.muse-btn,.muse-input,.muse-filter button{font:inherit;font-size:13px;}
+.muse-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;min-height:32px;
+  padding:4px 12px;border:1px solid var(--muse-line);border-radius:8px;background:var(--dsw-alias-bg-base,transparent);color:var(--muse-ink);}
+.muse-card button:not(:disabled):hover,.muse-fold summary:hover{background:var(--dsw-alias-interactive-bg-hover);}
+.muse-btn--primary{background:var(--dsw-alias-button-primary-fill);color:var(--dsw-alias-label-primary-foreground);border-color:transparent;}
+.muse-card .muse-btn--primary:hover{background:var(--dsw-alias-button-primary-hover);}
+.muse-btn--danger,.muse-danger,.muse-history-error{color:var(--dsw-alias-state-error-primary);}
+.muse-btn--quiet{background:transparent;}
+.muse-card :is(button,summary,input):focus-visible{outline:2px solid var(--dsw-focus-ring-color,var(--muse-accent));outline-offset:2px;}
+.muse-card button:disabled{opacity:.48;cursor:default;}
+.muse-card-actions,.muse-confirm,.muse-foot-actions,.muse-diag-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.muse-input{min-width:0;border:1px solid var(--muse-line);border-radius:7px;padding:6px 9px;background:var(--dsw-alias-bg-base,transparent);color:var(--muse-ink);}
+.muse-meta,.muse-field-hint,.muse-account-meta,.muse-diag dt{font-size:12px;color:var(--muse-sub);line-height:1.55;overflow-wrap:anywhere;}
+.muse-list,.muse-records,.muse-fields,.muse-fold,.muse-foot,.muse-empty{border:1px solid var(--muse-line);border-radius:12px;background:var(--muse-panel);}
+.muse-account,.muse-record{padding:16px 18px;display:grid;gap:9px;min-width:0;}
+.muse-account + .muse-account,.muse-record + .muse-record{border-top:1px solid var(--muse-line);}
+.muse-identity,.muse-account-meta,.muse-foot-figs{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;min-width:0;}
+.muse-identity{flex:1;}
+.muse-name,.muse-record-copy strong{font-size:14px;font-weight:600;overflow-wrap:anywhere;}
+.muse-chip,.muse-tag{display:inline-flex;align-items:center;padding:1px 7px;border-radius:5px;background:var(--dsw-alias-interactive-bg-hover);font-size:12px;line-height:18px;}
+.muse-state{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muse-ink);}
+.muse-state::before{content:"";width:6px;height:6px;flex:none;border-radius:50%;background:var(--dsw-alias-state-idle-primary);}
+.muse-state[data-tone="ok"]::before{background:var(--dsw-alias-state-success-primary);}
+.muse-state[data-tone="bad"]::before{background:var(--dsw-alias-state-error-primary);}
+.muse-state[data-tone="warn"]::before{background:var(--dsw-alias-state-warn-primary);}
+.muse-tag--warn,.muse-warning{color:var(--dsw-alias-state-warn-primary);}
+.muse-tag--bad{color:var(--dsw-alias-state-error-primary);}
+.muse-allowance{display:grid;gap:5px;}
+.muse-allowance-line{font-size:12px;gap:6px;}
+.muse-allowance-line strong{font-weight:550;font-variant-numeric:tabular-nums;}
+.muse-text-btn{padding:2px 5px;border-radius:4px;font-size:12px;}
+.muse-allowance-line button{margin-left:auto;color:var(--muse-accent);}
+.muse-allowance progress{appearance:none;width:100%;height:4px;border:0;border-radius:4px;overflow:hidden;}
+.muse-allowance progress::-webkit-progress-bar{background:var(--dsw-alias-border-l2);}
+.muse-allowance progress::-webkit-progress-value{background:var(--muse-accent);border-radius:4px;}
+.muse-allowance[data-tone="high"] progress::-webkit-progress-value{background:var(--dsw-alias-state-warn-primary);}
+.muse-allowance[data-tone="full"] progress::-webkit-progress-value{background:var(--dsw-alias-state-error-primary);}
+.muse-account-meta:empty{display:none;}
+.muse-account-details{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--muse-line);}
+.muse-confirm p{flex-basis:100%;}
+.muse-empty{padding:24px 18px;color:var(--muse-sub);}
+.muse-card .muse-warning{color:var(--muse-ink);border-inline-start:2px solid var(--dsw-alias-state-warn-primary);padding-inline-start:8px;}
+.muse-warning,.muse-notice{font-size:13px;overflow-wrap:anywhere;}
+.muse-notice{padding:9px 12px;border-left:3px solid var(--muse-accent);background:var(--muse-panel);}
+.muse-notice[data-kind="error"]{border-color:var(--dsw-alias-state-error-primary);}
+.muse-notice[data-kind="warn"]{border-color:var(--dsw-alias-state-warn-primary);}
+.muse-filter{display:flex;width:fit-content;gap:2px;padding:3px;border-radius:8px;background:var(--dsw-alias-interactive-bg-hover);}
+.muse-filter button{padding:3px 12px;border-radius:6px;color:var(--muse-sub);}
+.muse-filter button[aria-pressed="true"]{background:var(--dsw-alias-bg-layer-1);color:var(--muse-ink);box-shadow:0 0 0 1px var(--muse-line);}
+.muse-record-head{align-items:baseline;}
+.muse-thumb{display:grid;place-items:center;flex:none;width:42px;height:42px;background:var(--dsw-alias-interactive-bg-hover);border-radius:8px;overflow:hidden;color:var(--muse-sub);}
+.muse-thumb img{width:100%;height:100%;object-fit:cover;}
+.muse-record-head{align-items:center;}
+.muse-record-copy{flex:1;display:grid;gap:4px;min-width:0;}
+.muse-record-head .muse-state{flex:none;}
+.muse-preview{padding-inline-start:52px;display:grid;gap:8px;justify-items:start;}
+.muse-preview button{color:var(--muse-accent);}
+.muse-preview-media{max-width:100%;max-height:min(320px,50vh);border-radius:8px;}
+.muse-pane>.muse-btn{justify-self:start;}
+.muse-fields{margin:0;padding:0 16px;min-width:0;}
+.muse-field{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 0;}
+.muse-field+.muse-field{border-top:1px solid var(--muse-line);}
+.muse-field-copy{min-width:0;display:grid;gap:2px;}
+.muse-field-label{font-size:14px;font-weight:500;color:var(--muse-ink);}
+.muse-input--num{width:78px;text-align:end;flex:none;font-variant-numeric:tabular-nums;}
+.muse-switch{appearance:none;position:relative;flex:none;width:34px;height:20px;margin:0;border:1px solid var(--dsw-alias-border-l3);
+  border-radius:12px;background:var(--dsw-alias-border-l2);cursor:pointer;}
+.muse-switch::before{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+  background:var(--dsw-alias-switch-thumb);box-shadow:0 1px 2px var(--muse-line);}
 .muse-switch:checked{background:var(--dsw-alias-button-primary-fill);border-color:transparent;}
-.muse-switch:checked::before{inset-inline-start:16px;background:var(--dsw-alias-label-primary-foreground);}
-.muse-section--settings > .muse-card-actions{margin-top:16px;}
-@media (forced-colors:active){.muse-switch{appearance:auto;}.muse-switch::before{display:none;}}
-.muse-btn--tiny{padding:2px 6px;font-size:12px;}
-
-/* Diagnostics: a definition list, two columns, quietest type on the page. */
-.muse-diag{margin-top:20px;padding-top:16px;border-top:.5px solid var(--dsw-alias-border-l2);}
-.muse-diag h5{margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.04em;
-  text-transform:uppercase;color:var(--dsw-alias-label-primary);}
-.muse-diag dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0;font-size:12px;}
-.muse-diag dt{color:var(--dsw-alias-label-secondary);white-space:nowrap;}
-.muse-diag dd{margin:0;color:var(--dsw-alias-label-primary);word-break:break-all;}
-
-.muse-foot{gap:8px;}
-.muse-foot-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-.muse-foot-figs{display:flex;align-items:baseline;gap:16px;flex:1 1 auto;min-width:0;}
-.muse-foot-fig{display:flex;align-items:baseline;gap:4px;line-height:18px;font-size:12px;
-  color:var(--dsw-alias-label-secondary);white-space:nowrap;}
-.muse-foot-fig strong{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary);
-  font-variant-numeric:tabular-nums;}
-.muse-foot-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
-/* Where the data lives: the quietest thing on the page, and allowed to wrap. */
-.muse-foot-paths{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary);
-  word-break:break-all;}
-.muse-notice{font-size:12px;line-height:1.6;padding:6px 8px;border-radius:6px;
-  border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);}
-.muse-notice[data-kind="error"]{color:var(--dsw-alias-state-error-primary);
-  border-color:var(--dsw-alias-state-error-primary);}
-.muse-notice[data-kind="warn"]{color:var(--dsw-alias-state-warn-primary);
-  border-color:var(--dsw-alias-state-warn-primary);}
-.muse-notice[data-kind="ok"]{color:var(--dsw-alias-state-success-primary);
-  border-color:var(--dsw-alias-state-success-primary);}
-.muse-spacer{flex:1 1 auto;}
+.muse-switch:checked::before{left:16px;background:var(--dsw-alias-label-primary-foreground);}
+.muse-fold>summary{padding:13px 16px;cursor:pointer;font-weight:500;border-radius:inherit;}
+.muse-fold>summary::marker{color:var(--muse-sub);}
+.muse-fold .muse-fields{border:0;background:transparent;}
+.muse-savebar{flex-wrap:wrap;justify-content:flex-end;}
+.muse-savebar span{margin-right:auto;font-size:13px;}
+.muse-diag dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;padding:0 16px 12px;}
+.muse-diag dd{font-size:13px;overflow-wrap:anywhere;}
+.muse-diag-actions{margin:0 16px 14px;}
+.muse-foot{display:grid;padding:14px 16px;gap:8px;}
+.muse-foot-row,.muse-account-top{flex-wrap:wrap;}
+.muse-foot-fig{display:flex;align-items:baseline;gap:5px;font-size:12px;}
+.muse-foot-fig strong{font-size:14px;}
+@container(max-width:440px){.muse-account,.muse-record{padding:13px;}
+ .muse-account-top{gap:6px;}.muse-identity{flex-basis:100%;}.muse-field{gap:10px;}
+ .muse-record-head{align-items:flex-start;flex-wrap:wrap;}.muse-tabs{gap:15px;}}
+@media(forced-colors:active){.muse-switch{appearance:auto;}.muse-switch::before{display:none;}}
 `;
 
     /** Install this plugin's stylesheet once per slot entry. */
@@ -908,40 +908,12 @@ window.__ModuleLoader__.load({
             )
           : h("span", { className: "muse-meta" }, t("settings.probe.never"));
 
-      const quota = account.quota;
-      const hasQuota = quota !== undefined && quota.usedPct !== undefined;
-
-      /**
-       * How much of the weekly allowance is left, as a tone.
-       *
-       * The figure is a *used* percentage, so the colour has to invert the meaning:
-       * a high number is the bad end. Thresholds match the composer pill's, so the
-       * two surfaces never disagree about what "nearly spent" looks like.
-       */
-      const quotaTone = !hasQuota
-        ? "none"
-        : quota.usedPct >= 100
-          ? "full"
-          : quota.usedPct >= 80
-            ? "high"
-            : "ok";
-
-      // One quiet line of context. `quotaUpdated` and `lastUsed` are merged: the
-      // panel is read right after a generation, so they answer the same question.
-      const contextParts = [
-        quota !== undefined && quota.plan !== undefined ? quota.plan : undefined,
-        quota !== undefined && quota.reset !== undefined
-          ? `${t("settings.quotaReset")} ${quota.reset}`
-          : undefined,
-        `${t("settings.lastUsed")} ${
-          account.lastUsedAt === undefined
-            ? t("settings.never")
-            : relativeTime(account.lastUsedAt, locale)
-        }`,
-        quota !== undefined && quota.error !== undefined ? quota.error : undefined,
-        account.usable !== true ? account.usableReason : undefined,
-      ].filter((entry) => typeof entry === "string" && entry !== "");
-
+      const quota = account.quotaLive?.ok ? account.quotaLive : account.quota;
+      const hasQuota = Number.isFinite(quota?.usedPct);
+      const tone = !hasQuota ? "none" : quota.usedPct >= 100 ? "full" : quota.usedPct >= 80 ? "high" : "ok";
+      const [expanded, setExpanded] = useState(false);
+      const stateLabel = account.status === "ready" && !account.usable
+        ? account.usableReason || t("settings.availability") : statusText;
       const disabled = pending !== undefined;
       const button = (action, label, options) =>
         h(
@@ -978,135 +950,46 @@ window.__ModuleLoader__.load({
           })
         : null;
 
-      return h(
-        "div",
-        { className: "muse-row", "data-selected": account.selected === true },
-        h(
-          "div",
-          { className: "muse-row-main" },
-          // Identity column: name, state, and which account is the hand-picked one.
-          h(
-            "div",
-            { className: "muse-row-ident" },
-            h("strong", { className: "muse-row-name" }, account.label),
-            h(
-              "div",
-              { className: "muse-row-tags" },
-              h("span", { className: `muse-tag muse-tag--${statusTone}` }, statusText),
-              account.selected
-                ? h(
-                    "span",
-                    { className: "muse-tag muse-tag--sel", title: t("settings.selectedHint") },
-                    t("settings.selected"),
-                  )
-                : null,
-              account.running ? h("span", { className: "muse-tag" }, t("settings.running")) : null,
-              probeNode,
-            ),
-          ),
-          /**
-           * The figure the page exists to answer — and the control that refreshes it.
-           *
-           * "Read the quota" was a button competing for room with four others. The number
-           * is what it updates, so the number is where it belongs: one click re-reads the
-           * panel, and the row gains back a button of width.
-           */
-          h(
-            "button",
-            {
-              type: "button",
-              className: "muse-row-quota",
-              "data-tone": quotaTone,
-              title: t("settings.refreshQuota"),
-              "aria-label": t("settings.refreshQuota"),
-              disabled: disabled || busy,
-              onClick: () => onAction("refresh-quota", account.id),
-            },
-            h(
-              "div",
-              { className: "muse-quota-line" },
-              h(
-                "span",
-                { className: "muse-quota-value" },
-                hasQuota ? `${quota.usedPct}%` : t("settings.quotaNeverShort"),
-              ),
-              h("span", { className: "muse-quota-action" }, t("settings.refreshShort")),
-            ),
-            /**
-             * State and action share one line under the figure: what it measures on the
-             * left, what a click does on the right. The caption used to be here and the
-             * action was invisible, which is why nobody found refresh.
-             */
-            hasQuota
-              ? h(
-                  "div",
-                  { className: "muse-quota-label" },
-                  `${t("settings.quotaUsedShort")}${quota.stale ? ` ${t("settings.quotaStale")}` : ""}`,
-                )
-              : null,
-          ),
-        ),
-        h("div", { className: "muse-meta muse-row-context" }, contextParts.join(" \u00B7 ")),
-        h(
-          "div",
-          { className: "muse-card-actions" },
+      return h("article", { className: "muse-account" },
+        h("div", { className: "muse-account-top" },
+          h("div", { className: "muse-identity" },
+            h("strong", { className: "muse-name" }, account.label || account.id),
+            account.selected && h("span", { className: "muse-chip", title: t("settings.selectedHint") }, t("settings.selected")),
+            h("span", { className: "muse-state", "data-tone": statusTone }, stateLabel)),
           primaryAction,
-          /**
-           * Maintenance actions are shown, not hidden behind a disclosure.
-           *
-           * "More" cost two clicks to reach four buttons that fit on one line anyway,
-           * and it hid the very actions a user opens this page to reach — read the
-           * quota, run the test, switch accounts. The recessed strip keeps them
-           * visually second without making them hidden.
-           */
-          h(
-            "div",
-            { className: "muse-actions-more" },
-            // Verification is available but not advertised: it is a re-check, not a step.
-            needsSignIn
-              ? null
-              : button("verify", pending === "verify" ? t("settings.verifyPending") : t("settings.verify")),
-            button("probe", pending === "probe" ? t("settings.testPending") : t("settings.test")),
-            account.selected ? null : button("select", t("settings.select")),
-            account.running ? button("quit-browser", t("settings.quit")) : null,
-          ),
-          h("span", { className: "muse-spacer" }),
-          confirming
-            ? h(
-                React.Fragment,
-                null,
-                h("span", { className: "muse-meta" }, t("settings.removeConfirm", { label: account.label })),
-                h(
-                  "button",
-                  {
-                    type: "button",
-                    className: "muse-btn muse-btn--danger",
-                    disabled: disabled || busy,
-                    onClick: () => {
-                      setConfirming(false);
-                      onAction("remove", account.id);
-                    },
-                  },
-                  t("settings.remove"),
-                ),
-                h(
-                  "button",
-                  { type: "button", className: "muse-btn", onClick: () => setConfirming(false) },
-                  "\u00D7",
-                ),
-              )
-            : h(
-                "button",
-                {
-                  type: "button",
-                  // Quiet by default: deletion is not a peer of "sign in".
-                  className: "muse-btn muse-btn--quiet muse-btn--danger-quiet",
-                  disabled: disabled || busy,
-                  onClick: () => setConfirming(true),
-                },
-                t("settings.remove"),
-              ),
-        ),
+          h("button", { type: "button", className: "muse-btn muse-manage", "aria-expanded": expanded,
+            onClick: () => { setExpanded(!expanded); setConfirming(false); } },
+            t(expanded ? "settings.closeDetails" : "settings.manage"))),
+        h("div", { className: "muse-allowance", "data-tone": tone },
+          h("div", { className: "muse-allowance-line" },
+            h("span", null, t("settings.scope")),
+            h("strong", null, hasQuota ? t("pill.usedShort", { pct: quota.usedPct }) : t("settings.quotaNeverShort")),
+            quota?.stale && h("span", { className: "muse-meta" }, t("settings.quotaStale")),
+            h("button", { type: "button", className: "muse-text-btn", disabled: disabled || busy,
+              onClick: () => onAction("refresh-quota", account.id) }, t("settings.refreshShort"))),
+          hasQuota && h("progress", { max: 100, value: quota.usedPct, "aria-label": t("settings.scope") })),
+        h("div", { className: "muse-account-meta" },
+          quota?.plan && h("span", null, quota.plan),
+          quota?.reset && h("span", null, t("settings.quotaReset") + " " + quota.reset),
+          account.running && h("span", null, t("settings.running")),
+          probe?.checkedAt && probeNode),
+        quota?.error && h("p", { className: "muse-warning" }, quota.error),
+        expanded && h("div", { className: "muse-account-details" },
+          h("div", { className: "muse-account-meta" },
+            h("span", null, t("settings.lastUsed") + " " + (account.lastUsedAt ? relativeTime(account.lastUsedAt, locale) : t("settings.never"))),
+            quota?.at && h("span", null, t("settings.updated") + " " + relativeTime(quota.at, locale)),
+            !probe?.checkedAt && probeNode),
+          probe?.note && h("p", { className: "muse-meta" }, probe.note),
+          h("div", { className: "muse-card-actions" },
+            button("open-browser", t("settings.openBrowser")), !needsSignIn && button("verify", t("settings.verify")),
+            button("probe", t("settings.test")), !account.selected && button("select", t("settings.select")),
+            account.running && button("quit-browser", t("settings.quit")),
+            !confirming && h("button", { type: "button", className: "muse-text-btn muse-danger", disabled: disabled || busy,
+              onClick: () => setConfirming(true) }, t("settings.remove"))),
+          confirming && h("div", { className: "muse-confirm" },
+            h("p", null, t("settings.removeConfirm", { label: account.label })),
+            button("remove", t("settings.remove"), { danger: true }),
+            h("button", { type: "button", className: "muse-btn", onClick: () => setConfirming(false) }, t("settings.cancel")))),
       );
     }
 
@@ -1118,101 +1001,50 @@ window.__ModuleLoader__.load({
      * image. Costs are shown per task and summarised for the last week, because the
      * weekly allowance is the budget that expires.
      */
+    function RecordThumbnail({ task }) {
+      const [unavailable, setUnavailable] = useState(false);
+      const video = task.kind === "video";
+      return h("span", { className: "muse-thumb", "aria-hidden": "true" },
+        !video && task.media && !unavailable
+          ? h("img", { src: MEDIA_BASE + encodeURIComponent(task.media), loading: "lazy", alt: "", onError: () => setUnavailable(true) })
+          : h("svg", { width: 19, height: 19, viewBox: "0 0 24 24", stroke: "currentColor",
+              fill: "none", strokeWidth: 1.5, strokeLinejoin: "round", strokeLinecap: "round" },
+              video ? h("path", { d: "M3 6h12v12H3z M15 10l6-3v10l-6-3" }) :
+                h("path", { d: "M3 4h18v16H3z M4 17l5-5 4 4 3-3 4 4 M15 8h.01" })));
+    }
+
     function HistorySection({ history, t, locale }) {
-      const [expandedAll, setExpandedAll] = useState(false);
-      const shown = expandedAll ? history : history.slice(0, 5);
-
-      /**
-       * Cost of one task, when both readings exist.
-       *
-       * New tasks receive both readings together when one submission can be
-       * attributed to their interval. Older or unmeasured tasks may lack either.
-       */
-      const cost = (task) =>
-        typeof task.quotaBefore === "number" && typeof task.quotaAfter === "number"
-          ? Math.max(0, task.quotaAfter - task.quotaBefore)
-          : undefined;
-
-      // A week is the allowance's own period.
-      const weekAgo = Date.now() - 7 * 24 * 3600_000;
-      const weekTasks = history.filter((task) => (task.at ?? 0) >= weekAgo);
-      const weekCost = weekTasks.reduce((sum, task) => sum + (cost(task) ?? 0), 0);
-      const weekImages = weekTasks.filter((task) => task.kind === "image").length;
-      const weekVideos = weekTasks.filter((task) => task.kind === "video").length;
-
-      return h(
-        "div",
-        { className: "muse-section" },
-        h("h4", { className: "muse-section-title" }, t("settings.history")),
-        h(
-          "div",
-          { className: "muse-facts" },
-          h(
-            "span",
-            { className: "muse-fact" },
-            h("strong", null, String(weekImages)),
-            h("span", null, t("settings.historyImages")),
-          ),
-          h(
-            "span",
-            { className: "muse-fact" },
-            h("strong", null, String(weekVideos)),
-            h("span", null, t("settings.historyVideos")),
-          ),
-          h(
-            "span",
-            { className: "muse-fact" },
-            h("strong", null, weekCost > 0 ? `+${weekCost}%` : "—"),
-            h("span", null, t("settings.historyCost")),
-          ),
-        ),
-        h(
-          "div",
-          { className: "muse-history" },
-          shown.map((task) =>
-            h(
-              "div",
-              { className: "muse-history-row", key: task.id, "data-state": task.state },
-              h("span", { className: "muse-history-kind" }, task.kind === "video" ? "\u25B6" : "\u25A0"),
-              h(
-                "span",
-                { className: "muse-history-main" },
-                h("span", { className: "muse-history-when" }, relativeTime(task.at, locale)),
-                task.account === undefined ? null : h("span", { className: "muse-history-acct" }, task.account),
-              ),
-              h(
-                "span",
-                { className: "muse-history-meta" },
-                [
-                  task.durationMs === undefined ? undefined : `${Math.round(task.durationMs / 1000)}s`,
-                  cost(task) === undefined ? undefined : `+${cost(task)}%`,
-                ]
-                  .filter(Boolean)
-                  .join(" \u00B7 ") || "\u2014",
-              ),
-              // A task that did not deliver says so, because "silent absence" and
-              // "did not finish" are different and only one needs attention.
-              task.state === "delivered"
-                ? null
-                : task.state === "generated-unsaved"
-                ? h("span", { className: "muse-tag muse-tag--warn", title: task.note }, t("settings.stateUnsaved"))
-                : h("span", { className: `muse-tag muse-tag--${task.state === "unknown" ? "warn" : "bad"}`, title: task.note },
-                    task.state === "unknown" ? t("settings.stateUnknown") : t("settings.stateFailed")),
-            ),
-          ),
-        ),
-        history.length > 5
-          ? h(
-              "button",
-              {
-                type: "button",
-                className: "muse-btn muse-btn--quiet muse-btn--tiny",
-                onClick: () => setExpandedAll((open) => open !== true),
-              },
-              expandedAll ? t("settings.less") : t("settings.showAll"),
-            )
-          : null,
-      );
+      const [filter, setFilter] = useState("all");
+      const [limit, setLimit] = useState(8);
+      const filtered = history.filter((task) => filter === "all" || task.kind === filter);
+      const states = { delivered: "delivered", failed: "stateFailed", unknown: "stateUnknown", "generated-unsaved": "unsaved" };
+      return h("section", { className: "muse-pane" },
+        h("header", { className: "muse-list-head" },
+          h("h4", null, t("settings.history")),
+          h("span", { className: "muse-meta" }, t("settings.historyCount", { count: history.length }))),
+        h("div", { className: "muse-filter", role: "group", "aria-label": t("settings.history") },
+          ["all", "image", "video"].map((key) => h("button", { type: "button", key, "aria-pressed": filter === key,
+            onClick: () => { setFilter(key); setLimit(8); } }, t("settings." + key)))),
+        filtered.length === 0 && h("p", { className: "muse-empty" }, t(history.length ? "settings.zeroFilter" : "settings.historyEmpty")),
+        filtered.length > 0 && h("div", { className: "muse-records" }, filtered.slice(0, limit).map((task) => {
+          const kind = t("settings." + (task.kind === "video" ? "video" : "image"));
+          const cost = Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter) && task.quotaAfter >= task.quotaBefore
+            ? "+" + (task.quotaAfter - task.quotaBefore) + "%" : undefined;
+          const meta = [kind, task.account, relativeTime(task.at, locale),
+            task.durationMs && Math.round(task.durationMs / 1000) + "s", cost].filter(Boolean);
+          return h("article", { key: task.id, className: "muse-record" },
+            h("div", { className: "muse-record-head" },
+              h(RecordThumbnail, { task }),
+              h("div", { className: "muse-record-copy" }, h("strong", null, task.prompt || task.media || kind),
+                h("span", { className: "muse-meta" }, meta.join(" · "))),
+              h("span", { className: "muse-state", "data-tone": task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
+                t("settings." + (states[task.state] || "stateUnknown")))),
+            task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
+            task.references?.length > 0 && h("div", { className: "muse-meta" }, t("settings.refs") + " · " + task.references.join("、")),
+            task.media && h(MediaOpen, { name: task.media, kind: task.kind, t }));
+        })),
+        filtered.length > 8 && h("button", { type: "button", className: "muse-btn", onClick: () => setLimit(limit === 8 ? filtered.length : 8) },
+          t(limit === 8 ? "settings.showAll" : "settings.less")));
     }
 
     /**
@@ -1222,7 +1054,7 @@ window.__ModuleLoader__.load({
      * whose effect the user cannot see immediately — a slider that saves on every
      * keystroke would restart the browser mid-typing.
      */
-    function SettingsSection({ settings, diagnostics, t, pending, onSave }) {
+    function SettingsSection({ settings, diagnostics, paths, browser, t, pending, onSave }) {
       const [draft, setDraft] = useState({});
       const value = (key) => (key in draft ? draft[key] : settings[key]);
       const dirty = Object.keys(draft).some((key) => draft[key] !== settings[key]);
@@ -1260,71 +1092,55 @@ window.__ModuleLoader__.load({
             value: String(value(key) ?? ""),
             min,
             max,
+            required: true,
             onChange: (event) =>
               setDraft({ ...draft, [key]: event.target.value === "" ? "" : Number(event.target.value) }),
           }),
         );
 
-      return h(
-        "div",
-        { className: "muse-section muse-section--settings" },
-        h("h4", { className: "muse-section-title" }, t("settings.advanced")),
-        h(
-          "div",
-          { className: "muse-fields" },
-          toggle("headlessAfterLogin", t("settings.fieldHeadless"), t("settings.fieldHeadlessHint")),
-          toggle("showQuotaInComposer", t("settings.fieldPill"), t("settings.fieldPillHint")),
-          numberField("idleReapSeconds", t("settings.fieldIdle"), t("settings.fieldIdleHint"), 0, 86400),
-          numberField("maxLiveBrowsers", t("settings.fieldConcurrent"), t("settings.fieldConcurrentHint"), 0, 8),
-          numberField("autoRefreshQuotaSeconds", t("settings.fieldRefresh"), t("settings.fieldRefreshHint"), 0, 86400),
-          numberField("imageTimeoutSeconds", t("settings.fieldImageTimeout"), undefined, 30, 1800),
-          numberField("videoTimeoutSeconds", t("settings.fieldVideoTimeout"), undefined, 60, 3600),
-        ),
-        h(
-          "div",
-          { className: "muse-card-actions" },
-          h(
-            "button",
-            {
-              type: "button",
-              className: "muse-btn muse-btn--primary",
-              disabled: !dirty || pending !== undefined,
-              onClick: () => {
-                onSave(draft);
-                setDraft({});
-              },
-            },
-            dirty ? t("settings.save") : t("settings.saved"),
-          ),
-          dirty
-            ? h(
-                "button",
-                { type: "button", className: "muse-btn muse-btn--quiet", onClick: () => setDraft({}) },
-                t("settings.discard"),
-              )
-            : null,
-          h("span", { className: "muse-spacer" }),
-          h(
-            "span",
-            { className: "muse-field-hint" },
-            t("settings.needsRestartHint"),
-          ),
-        ),
-        /**
-         * Diagnostics: read-only facts that make a bug report actionable without
-         * asking the user to hunt through `~/.dsh`.
-         */
+      const [saving, setSaving] = useState(false);
+      return h("form", {
+        className: "muse-pane",
+        onSubmit: async (event) => {
+          event.preventDefault();
+          if (!dirty || pending || saving) return;
+          setSaving(true);
+          try {
+            if (await onSave(draft)) setDraft({});
+          } finally { setSaving(false); }
+        },
+      },
+        h("h4", null, t("settings.generationSettings")),
+        h("fieldset", { className: "muse-fields", disabled: saving, "aria-label": t("settings.generationSettings") },
+          toggle("independentGeneration", t("settings.fieldIndependent"), t("settings.fieldIndependentHint")),
+          toggle("showQuotaInComposer", t("settings.fieldPill"), t("settings.fieldPillHint"))),
+        h("details", { className: "muse-fold" },
+          h("summary", null, t("settings.execution")),
+          h("fieldset", { className: "muse-fields", disabled: saving, "aria-label": t("settings.execution") },
+            toggle("headlessAfterLogin", t("settings.fieldHeadless"), t("settings.fieldHeadlessHint")),
+            numberField("idleReapSeconds", t("settings.fieldIdle"), t("settings.fieldIdleHint"), 0, 86400),
+            numberField("maxLiveBrowsers", t("settings.fieldConcurrent"), t("settings.fieldConcurrentHint"), 0, 8),
+            numberField("maxAccountsPerTask", t("settings.retryAccounts"), t("settings.retryHint"), 1, 5),
+            numberField("autoRefreshQuotaSeconds", t("settings.fieldRefresh"), t("settings.fieldRefreshHint"), 0, 86400),
+            numberField("imageTimeoutSeconds", t("settings.fieldImageTimeout"), undefined, 30, 1800),
+            numberField("videoTimeoutSeconds", t("settings.fieldVideoTimeout"), undefined, 60, 3600))),
+        dirty && h("div", { className: "muse-savebar" },
+          h("span", { role: "status" }, t("settings.pendingChanges")),
+          h("button", { type: "button", className: "muse-btn", disabled: saving, onClick: () => setDraft({}) }, t("settings.discard")),
+          h("button", { type: "submit", className: "muse-btn muse-btn--primary", disabled: saving || pending !== undefined }, t("settings.save"))),
         diagnostics === undefined
           ? null
           : h(
-              "div",
-              { className: "muse-diag" },
-              h("h5", null, t("settings.diagnostics")),
+              "details",
+              { className: "muse-fold muse-diag" },
+              h("summary", null, t("settings.diagnostics")),
               h(
                 "dl",
                 null,
                 [
                   [t("settings.diagState"), diagnostics.stateRoot],
+                  [t("settings.browser"), browser?.path],
+                  [t("settings.profiles"), paths?.profiles],
                   [t("settings.diagTasks"), String(diagnostics.taskCount ?? 0)],
                   [t("settings.diagMedia"), String(diagnostics.mediaCount ?? 0)],
                   [t("settings.diagBrowsers"), String(diagnostics.browserRunning ?? 0)],
@@ -1352,8 +1168,16 @@ window.__ModuleLoader__.load({
      * because the clear action needs its own confirmation state, which should not sit in
      * the card's state next to the account form.
      */
-    function DiskFooter({ snapshot, t, pending, confirmingMedia, setConfirmingMedia, onClear }) {
-      if (snapshot === undefined || snapshot.browser?.path === undefined) return null;
+
+    /**
+     * Disk usage and the one destructive action on this page.
+     *
+     * Split out because it belongs with the accounts — they are what fill the disk — and
+     * because the clear action needs its own confirmation state, which should not sit in
+     * the card's state next to the account form.
+     */
+    function DiskFooter({ snapshot, t, pending, confirmingMedia, setConfirmingMedia, onClear, onRevealMediaDir }) {
+      if (snapshot === undefined) return null;
       const profileTotal = Object.values(snapshot.profileBytes ?? {}).reduce(
         (sum, value) => sum + (value ?? 0),
         0,
@@ -1363,6 +1187,8 @@ window.__ModuleLoader__.load({
       return h(
         "div",
         { className: "muse-foot" },
+        h("div", { className: "muse-list-head" }, h("h4", null, t("settings.disk")),
+          h("button", { type: "button", className: "muse-btn", disabled: pending !== undefined, onClick: onRevealMediaDir }, t("settings.openMediaDir"))),
         h(
           "div",
           { className: "muse-foot-row" },
@@ -1439,8 +1265,6 @@ window.__ModuleLoader__.load({
               )
             : null,
         ),
-        h("div", { className: "muse-foot-paths" }, `${t("settings.browser")}: ${snapshot.browser.path}`),
-        h("div", { className: "muse-foot-paths" }, `${t("settings.profiles")}: ${snapshot.paths.profiles}`),
       );
     }
 
@@ -1567,9 +1391,7 @@ window.__ModuleLoader__.load({
                 result.ok === true
                   ? {
                       kind: "ok",
-                      text: t("settings.savedKeys", {
-                        keys: (result.changed ?? []).join(", "),
-                      }),
+                      text: t("settings.saved"),
                     }
                   : { kind: "error", text: result.error ?? t("settings.actionFailed") },
               );
@@ -1623,6 +1445,7 @@ window.__ModuleLoader__.load({
               setNotice({ kind: "warn", text: t("settings.loginClosed") });
             }
             await load();
+            return result?.ok === true;
           } catch (error) {
             setNotice({ kind: "error", text: String(error) });
           } finally {
@@ -1649,7 +1472,7 @@ window.__ModuleLoader__.load({
            * itself. So with no heading here, switching from another section into Muse lost a
            * line, and the pane started straight at the tabs.
            */
-          h("h3", null, t("settings.nav")),
+          h("h3", null, h(MuseNavIcon, { size: 24 }), t("settings.nav")),
         /**
          * Three panes, one visible.
          *
@@ -1663,7 +1486,7 @@ window.__ModuleLoader__.load({
           ? null
           : h(
               "div",
-              { className: "muse-tabs", role: "tablist" },
+              { className: "muse-tabs", role: "group", "aria-label": t("settings.nav") },
               [
                 { id: "accounts", label: t("settings.paneAccounts") },
                 { id: "history", label: t("settings.paneHistory") },
@@ -1674,9 +1497,9 @@ window.__ModuleLoader__.load({
                   {
                     key: entry.id,
                     type: "button",
-                    role: "tab",
+
                     className: "muse-tab",
-                    "aria-selected": pane === entry.id,
+                    "aria-pressed": pane === entry.id,
                     "data-active": pane === entry.id,
                     onClick: () => setPane(entry.id),
                   },
@@ -1685,29 +1508,6 @@ window.__ModuleLoader__.load({
               ),
             ),
         ),
-        /**
-         * Setup guidance shown only when it is actionable.
-         *
-         * With no usable account it explains the four steps, because nothing else on the page
-         * can work yet. Once one is signed in it disappears: repeating installation notes on
-         * every visit is what made the page feel like a manual.
-         */
-        snapshot === undefined
-          ? null
-          : accounts.some((entry) => entry.status === "ready")
-            ? null
-            : h(
-                "div",
-                { className: "muse-section" },
-                h("p", null, t("settings.intro")),
-                h(
-                  "ol",
-                  { className: "muse-steps" },
-                  [t("settings.step1"), t("settings.step2"), t("settings.step3"), t("settings.step4")].map(
-                    (step, index) => h("li", { key: `step-${index}` }, step),
-                  ),
-                ),
-              ),
         busy ? h("div", { className: "muse-notice", "data-kind": "warn" }, t("settings.busy")) : null,
         notice !== undefined
           ? h("div", { className: "muse-notice", "data-kind": notice.kind }, notice.text)
@@ -1742,12 +1542,12 @@ window.__ModuleLoader__.load({
                 h(
                   "div",
                   { className: "muse-list-head" },
-                  h("h4", { className: "muse-list-title" }, t("settings.accountsTitle")),
+                  h("div", null, h("h4", null, t("settings.title")), accounts.length > 0 && h("span", { className: "muse-meta" }, t("settings.accountCount", { count: accounts.length }))),
                   h(
                     "button",
                     {
                       type: "button",
-                      className: adding ? "muse-btn muse-btn--quiet" : "muse-btn",
+                      className: adding ? "muse-btn muse-btn--quiet" : "muse-btn muse-btn--primary",
                       disabled: pending !== undefined || busy,
                       "aria-expanded": adding === true,
                       onClick: () => {
@@ -1803,7 +1603,7 @@ window.__ModuleLoader__.load({
                 : accounts.length === 0
                   ? // The steps live in the page head; repeating them here said the same
                     // thing twice in one screen.
-                    h("p", { className: "muse-meta" }, t("settings.empty"))
+                    h("p", { className: "muse-empty" }, t("settings.emptyAccount"))
                   : h(
                       "div",
                       { className: "muse-list" },
@@ -1822,11 +1622,7 @@ window.__ModuleLoader__.load({
               ),
             ),
         /* ---- history pane ---- */
-        pane !== "history"
-          ? null
-          : snapshot === undefined || (snapshot.history ?? []).length === 0
-            ? h("p", { className: "muse-meta" }, t("settings.historyEmpty"))
-            : h(HistorySection, { history: snapshot.history, t, locale }),
+        pane === "history" && snapshot ? h(HistorySection, { history: snapshot.history ?? [], t, locale }) : null,
         /* ---- advanced pane ---- */
         pane !== "advanced"
           ? null
@@ -1837,10 +1633,10 @@ window.__ModuleLoader__.load({
                 null,
                 h(SettingsSection, {
                   settings: snapshot.settings,
-                  diagnostics: snapshot.diagnostics,
+                  diagnostics: snapshot.diagnostics, paths: snapshot.paths, browser: snapshot.browser,
                   t,
                   pending,
-                  onSave: (patch) => void runAction("save-settings", undefined, { settings: patch }),
+                  onSave: (patch) => runAction("save-settings", undefined, { settings: patch }),
                 }),
                 /** Disk, clearing and paths: maintenance, so they live with maintenance. */
                 h(DiskFooter, {
@@ -1850,6 +1646,7 @@ window.__ModuleLoader__.load({
                   confirmingMedia,
                   setConfirmingMedia,
                   onClear: () => void runAction("clear-media"),
+                  onRevealMediaDir: () => void runAction("reveal-media"),
                 }),
               ),
         /**
