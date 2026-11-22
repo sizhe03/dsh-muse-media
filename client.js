@@ -114,25 +114,19 @@ window.__ModuleLoader__.load({
       "settings.historyCount": "最近 {count} 条",
       "pill.label": "Muse",
       "pill.used": "周额度已用 {pct}%",
-      "pill.unknown": "待刷新",
-      "pill.busy": "生成中",
-      "pill.plan": "计划",
-      "pill.reset": "重置",
-      "pill.updated": "数据更新于",
-      "pill.account": "账号",
-      "pill.accountViewing": "当前查看的账号（下次生成可能按额度重置日期选其他账号）",
-      "pill.accountRunning": "本次生成使用的账号",
-      "pill.source": "更新方式",
+      "pill.unknown": "周额度待刷新",
+      "pill.busy": "处理中",
+      "pill.failed": "额度读取失败",
+      "pill.previous": "上次已用 {pct}%",
+      "pill.plan": "套餐",
+      "pill.reset": "重置日期",
+      "pill.updated": "最近更新",
+      "pill.accountViewing": "查看账号",
+      "pill.accountRunning": "本次操作账号",
       "pill.extra": "额外额度",
       "pill.usedShort": "已用 {pct}%",
-      "pill.autoRefresh": "自动刷新，生成后立即更新",
-      "pill.pendingRefresh": "还没有读到额度；下一次生成后自动更新",
-      "pill.warn": "提醒",
-      "pill.warnHigh": "本周额度已用 {pct}%",
-      "pill.warnHighSolo": "本周额度接近用完；用完后会转用额外额度（不会中断生成）",
-      "pill.warnHighMulti": "本周额度接近用完；如果另有账号，下一次会优先用它",
-      "pill.warnFullNoExtra": "本周额度已用完。额外额度读数未知，仍可继续生成",
-      "pill.warnFullExtra": "本周额度已用完，正在使用额外额度（不会过期，可继续生成）",
+      "pill.activity": "当前操作",
+      "pill.error": "读取提示",
 
       "settings.title": "Muse 账号",
       /**
@@ -281,25 +275,19 @@ window.__ModuleLoader__.load({
       "settings.historyCount": "{count} recent tasks",
       "pill.label": "Muse",
       "pill.used": "{pct}% weekly used",
-      "pill.unknown": "Refresh needed",
-      "pill.busy": "Generating",
+      "pill.unknown": "Awaiting quota",
+      "pill.busy": "In progress",
+      "pill.failed": "Quota unavailable",
+      "pill.previous": "Last reading: {pct}% used",
       "pill.plan": "Plan",
       "pill.reset": "Resets",
-      "pill.updated": "Data from",
-      "pill.account": "Account",
-      "pill.accountViewing": "The account being viewed (the next run may pick another by reset date)",
-      "pill.accountRunning": "The account used for this run",
-      "pill.source": "Updates",
+      "pill.updated": "Updated",
+      "pill.accountViewing": "Viewing account",
+      "pill.accountRunning": "Account in use",
       "pill.extra": "Extra allowance",
       "pill.usedShort": "{pct}% used",
-      "pill.autoRefresh": "Automatic; refreshes right after a generation",
-      "pill.pendingRefresh": "No reading yet; updates after the next generation",
-      "pill.warn": "Note",
-      "pill.warnHigh": "{pct}% of the weekly allowance used",
-      "pill.warnHighSolo": "The weekly allowance is nearly spent; generations continue on the extra allowance",
-      "pill.warnHighMulti": "The weekly allowance is nearly spent; the next task will prefer another account if one is available",
-      "pill.warnFullNoExtra": "The weekly allowance is spent. The extra allowance is unmeasured; generation can continue",
-      "pill.warnFullExtra": "The weekly allowance is spent; running on the extra allowance, which does not expire",
+      "pill.activity": "Activity",
+      "pill.error": "Read error",
 
       "settings.title": "Muse accounts",
       "settings.nav": "Muse",
@@ -486,33 +474,31 @@ window.__ModuleLoader__.load({
     }
 
     const STYLE = `
-.muse-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;line-height:1;
-  color:var(--dsw-alias-label-secondary);padding:2px 4px;border-radius:6px;white-space:nowrap;}
-.muse-pill[data-state="stale"]{opacity:.55;}
-.muse-pill[data-state="error"]{opacity:.75;color:var(--dsw-alias-state-error-primary);}
-.muse-pill[data-state="busy"]{color:var(--dsw-alias-state-warn-primary);}
-/* Nearly spent: amber, so the allowance is visible before it runs out. */
-.muse-pill[data-state="high"]{color:var(--dsw-alias-state-warn-primary);}
-/* Weekly allowance spent; the extra allowance takes over, so this is not an
-   error — it is a change of source. Red would read as "broken". */
-.muse-pill[data-state="full"]{color:var(--dsw-alias-state-warn-primary);font-weight:600;}
-.muse-pill-dot{width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-brand-primary);flex:none;}
-.muse-pill[data-state="stale"] .muse-pill-dot{background:var(--dsw-alias-state-idle-primary);}
-.muse-pill[data-state="busy"] .muse-pill-dot{background:var(--dsw-alias-state-warn-primary);}
-.muse-pill[data-state="error"] .muse-pill-dot{background:var(--dsw-alias-state-error-primary);}
-.muse-pill[data-state="high"] .muse-pill-dot{background:var(--dsw-alias-state-warn-primary);}
-.muse-pill[data-state="full"] .muse-pill-dot{background:var(--dsw-alias-state-warn-primary);}
+.muse-pill,.muse-tip{--muse-meter:var(--dsw-alias-state-business-primary);--muse-track:var(--dsw-alias-border-l2);}
+.muse-pill[data-state="high"],.muse-tip[data-state="high"],
+.muse-pill[data-state="full"],.muse-tip[data-state="full"]{--muse-meter:var(--dsw-alias-state-warn-primary);}
+.muse-pill[data-state="stale"],.muse-tip[data-state="stale"]{--muse-meter:var(--dsw-alias-label-secondary);}
+.muse-pill{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;padding:3px 5px;
+  border-radius:5px;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;line-height:1.25;white-space:nowrap;}
+.muse-pill:hover,.muse-pill:focus-visible{background:var(--dsw-alias-interactive-bg-hover);}
+.muse-pill:focus-visible{outline:2px solid var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary));outline-offset:1px;}
 .muse-pill-label{font-weight:600;color:var(--dsw-alias-label-primary);}
-.muse-pill-acct{opacity:.75;}
-/* A "waiting for the next generation" readout is muted, not an error: nothing
-   is wrong, the Host simply has no reading to show yet. */
-.muse-pill[data-state="waiting"]{opacity:.6;}
-.muse-tip{position:fixed;z-index:2147483000;max-width:280px;padding:6px 8px;border-radius:6px;
-  font-size:12px;line-height:1.5;color:var(--dsw-alias-label-primary);
-  background:var(--dsw-alias-bg-overlay);border:1px solid var(--dsw-alias-border-l1);
-  box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none;}
-.muse-tip-row{display:flex;justify-content:space-between;gap:12px;}
-.muse-tip-key{color:var(--dsw-alias-label-secondary);flex:none;}
+.muse-pill-value,.muse-tip-value{font-variant-numeric:tabular-nums;}
+.muse-pill-acct{max-width:12ch;overflow:hidden;text-overflow:ellipsis;}
+.muse-meter{display:block;height:4px;border-radius:4px;background:var(--muse-track);overflow:hidden;}
+.muse-pill .muse-meter{width:24px;flex:none;}
+.muse-meter-fill{display:block;height:100%;border-radius:inherit;background:var(--muse-meter);}
+.muse-tip{position:fixed;z-index:2147483000;box-sizing:border-box;overflow:auto;padding:12px 14px;
+  border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);
+  box-shadow:0 4px 16px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary);font-size:12px;line-height:1.45;}
+.muse-tip-head,.muse-tip-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
+.muse-tip-head strong{font-size:13px;font-weight:600;}
+.muse-tip-head span,.muse-tip-key,.muse-tip-foot{color:var(--dsw-alias-label-secondary);}
+.muse-tip .muse-meter{margin-top:7px;}
+.muse-tip-rows{display:grid;gap:5px;margin-top:10px;}
+.muse-tip-key{flex:none;}
+.muse-tip-value{text-align:end;min-width:0;overflow-wrap:anywhere;}
+.muse-tip-foot{margin-top:9px;padding-top:7px;border-top:1px solid var(--dsw-alias-border-l2);}
 
 .muse-card {
   --muse-line:var(--dsw-alias-settings-card-stroke,var(--dsw-alias-border-l3));
@@ -648,27 +634,32 @@ window.__ModuleLoader__.load({
      * The composer dock clips overflow and the slot catalog says fixed overlays
      * must portal, so the tip cannot live inside the pill.
      */
-    function Tooltip({ rows, anchor }) {
-      if (rows.length === 0 || anchor === undefined) return null;
-      const reactDom = require("react-dom");
-      const width = 280;
-      const height = rows.length * 18 + 16;
-      const left = Math.max(8, Math.min(anchor.left, window.innerWidth - width - 8));
-      const top = Math.max(8, anchor.top - height - 10);
-      return reactDom.createPortal(
-        h(
-          "div",
-          { className: "muse-tip", role: "tooltip", style: { top, left } },
-          rows.map((row, index) =>
-            h(
-              "div",
-              { className: "muse-tip-row", key: index },
-              h("span", { className: "muse-tip-key" }, row.key),
-              h("span", null, row.value),
-            ),
-          ),
-        ),
-        document.body,
+    function UsageMeter({ pct }) {
+      if (!Number.isFinite(pct)) return null;
+      return h("span", { className: "muse-meter", "aria-hidden": true },
+        h("span", { className: "muse-meter-fill", style: { width: Math.max(0, Math.min(100, pct)) + "%" } }),
+      );
+    }
+
+    function Tooltip({ id, anchor, title, status, pct, state, rows, updated, onMouseEnter, onMouseLeave }) {
+      if (!anchor) return null;
+      const gap = 6;
+      const width = Math.min(280, window.innerWidth - 16);
+      const left = Math.max(8, Math.min(anchor.right - width, window.innerWidth - width - 8));
+      const above = anchor.top >= window.innerHeight - anchor.bottom;
+      const position = above ? { bottom: window.innerHeight - anchor.top + gap } : { top: anchor.bottom + gap };
+      const available = above ? anchor.top : window.innerHeight - anchor.bottom;
+      return require("react-dom").createPortal(
+        h("div", { id, role: "tooltip", className: "muse-tip", "data-state": state, onMouseEnter, onMouseLeave,
+          style: { ...position, left, width, maxHeight: Math.max(0, available - gap - 8) } },
+          h("div", { className: "muse-tip-head" }, h("strong", null, title), h("span", null, status)),
+          h(UsageMeter, { pct }),
+          rows.length > 0 && h("div", { className: "muse-tip-rows" }, rows.map(([key, value]) =>
+            h("div", { className: "muse-tip-row", key },
+              h("span", { className: "muse-tip-key" }, key),
+              h("span", { className: "muse-tip-value" }, value)))),
+          updated && h("div", { className: "muse-tip-foot" }, updated),
+        ), document.body,
       );
     }
 
@@ -695,6 +686,27 @@ window.__ModuleLoader__.load({
       const t = makeTranslate(locale);
       const [view, setView] = useState(undefined);
       const [tip, setTip] = useState(undefined);
+      const tipId = React.useId();
+      const trigger = React.useRef(null);
+      const closeTimer = React.useRef();
+      const cancelClose = () => clearTimeout(closeTimer.current);
+      const scheduleClose = () => {
+        cancelClose();
+        if (document.activeElement !== trigger.current) {
+          closeTimer.current = setTimeout(() => setTip(undefined), 140);
+        }
+      };
+      useEffect(() => () => clearTimeout(closeTimer.current), []);
+      useEffect(() => {
+        if (!tip) return;
+        const dismiss = (event) => {
+          if (event.key !== "Escape") return;
+          event.stopPropagation();
+          setTip(undefined);
+        };
+        document.addEventListener("keydown", dismiss, true);
+        return () => document.removeEventListener("keydown", dismiss, true);
+      }, [tip]);
 
       const load = useCallback(async () => {
         try {
@@ -732,124 +744,52 @@ window.__ModuleLoader__.load({
             accounts.find((entry) => entry.status === "ready"));
       const live = activeAccount?.quota;
 
-      const busy = typeof quota.busy === "string" && quota.busy !== "";
-      const hasNumber = typeof live?.usedPct === "number";
-      const stale = live?.stale === true;
-      /**
-       * Warn before the weekly allowance runs out.
-       *
-       * This is the cheap half of the "don't waste expiring quota" problem: the
-       * loss comes from *not noticing*, and until now the pill looked identical at
-       * 4% and 96%. Two thresholds, because the two states differ:
-       *
-       *   - `high` (>= 80%) means the allowance is nearly spent — route to another
-       *     account if one is available, or expect the extra allowance to take over.
-       *   - `full` (>= 100%) means the weekly allowance is gone. Generations
-       *     continue on the extra allowance, which never expires, so this is a
-       *     change of source rather than a stop — worth a distinct colour so it is
-       *     not misread as "generation will fail".
-       */
-      const usedPct = hasNumber ? live.usedPct : undefined;
-      const warning =
-        usedPct === undefined ? undefined : usedPct >= 100 ? "full" : usedPct >= 80 ? "high" : undefined;
-      const state = busy
-        ? "busy"
-        : hasNumber
-          ? stale
-            ? "stale"
-            : warning === undefined
-              ? "ok"
-              : warning === "full"
-                ? "full"
-                : "high"
-          : activeAccount === undefined || live === undefined
-            ? "unknown"
-            : "waiting";
-      const text = hasNumber
-        ? t("pill.used", { pct: live.usedPct })
-        : busy
-          ? t("pill.busy")
-          : t("pill.unknown");
+      const pct = Number.isFinite(live?.usedPct) ? live.usedPct : undefined;
+      const error = live?.error || quota.reason;
+      let state = "ok";
+      if (pct === undefined) state = error || live?.ok === false ? "error" : "waiting";
+      else if (live.stale || error) state = "stale";
+      else if (pct >= 100) state = "full";
+      else if (pct >= 80) state = "high";
 
+      const text = pct !== undefined
+        ? t(state === "stale" ? "pill.previous" : "pill.used", { pct })
+        : t(state === "error" ? "pill.failed" : "pill.unknown");
+      let status = pct === undefined ? text : t("pill.usedShort", { pct });
+      if (state === "high" || state === "full") {
+        status += " · " + t(state === "full" ? "settings.quotaFull" : "settings.quotaHigh");
+      } else if (state === "stale") {
+        status = t("pill.previous", { pct });
+      }
       const rows = [];
-      if (activeAccount !== undefined) {
-        /**
-         * Idle and running are different claims about the same name.
-         *
-         * Idle, the figure belongs to the account someone is looking at — the next run may
-         * order usable accounts by the reset date of their weekly allowance and choose another.
-         * During a run, it belongs to the account actually paying. Saying which is which is what
-         * keeps "acc-01 · 25%" from being read as a promise about the next generation.
-         */
-        rows.push({
-          key: t("pill.account"),
-          value: `${activeAccount.label} ${"·"} ${
-            quota.duringTask === true ? t("pill.accountRunning") : t("pill.accountViewing")
-          }`,
-        });
-      }
-      if (live?.plan !== undefined) rows.push({ key: t("pill.plan"), value: live.plan });
-      if (live?.reset !== undefined) rows.push({ key: t("pill.reset"), value: live.reset });
-      /**
-       * Say, in words, what the colour means. A warning that only changes shade
-       * is easy to miss and impossible to act on.
-       */
-      if (warning === "high") {
-        rows.push({
-          key: t("pill.warn"),
-          value: live?.accountCount === 1 || (view?.accounts ?? []).filter((a) => a.usable === true).length < 2
-            ? t("pill.warnHighSolo")
-            : t("pill.warnHighMulti"),
-        });
-      } else if (warning === "full") {
-        rows.push({
-          key: t("pill.warn"),
-          value:
-            live?.extraUsedPct === undefined
-              ? t("pill.warnFullNoExtra")
-              : t("pill.warnFullExtra"),
-        });
-      }
-      /**
-       * The two budgets are stated separately, because they are separate.
-       *
-       * `usedPct` is the free weekly allowance — the number the pill shows. The
-       * extra allowance never expires and is counted on its own, so it gets its
-       * own rows instead of being added to the weekly figure.
-       */
-      if (live?.extraUsedPct !== undefined || live?.extraLeft !== undefined) {
-        const extra = [];
-        if (live?.extraUsedPct !== undefined) extra.push(t("pill.usedShort", { pct: live.extraUsedPct }));
-        if (live?.extraLeft !== undefined) extra.push(live.extraLeft);
-        rows.push({ key: t("pill.extra"), value: extra.join(" · ") });
-      }
-      if (live?.at !== undefined) rows.push({ key: t("pill.updated"), value: relativeTime(live.at, locale) });
-      // Always say how the number stays current, so "0%" never looks stuck.
-      rows.push({
-        key: t("pill.source"),
-        value: hasNumber ? t("pill.autoRefresh") : t("pill.pendingRefresh"),
-      });
-      if (live?.error !== undefined) rows.push({ key: "-", value: live.error });
-      if (quota.busy !== undefined) rows.push({ key: "-", value: quota.busy });
+      if (activeAccount) rows.push([t(quota.duringTask ? "pill.accountRunning" : "pill.accountViewing"), activeAccount.label]);
+      if (live?.plan) rows.push([t("pill.plan"), live.plan]);
+      if (live?.reset) rows.push([t("pill.reset"), live.reset]);
+      const extra = [];
+      if (Number.isFinite(live?.extraUsedPct)) extra.push(t("pill.usedShort", { pct: live.extraUsedPct }));
+      if (live?.extraLeft != null && live.extraLeft !== "") extra.push(live.extraLeft);
+      if (extra.length) rows.push([t("pill.extra"), extra.join(" · ")]);
+      if (quota.busy) rows.push([t("pill.activity"), quota.busy]);
+      if (error) rows.push([t("pill.error"), error]);
+      const openTip = (event) => {
+        cancelClose();
+        setTip(event.currentTarget.getBoundingClientRect());
+      };
 
-      return h(
-        "div",
-        {
-          className: "muse-pill",
-          "data-state": state,
-          onMouseEnter: (event) => {
-            const rect = event.currentTarget.getBoundingClientRect();
-            setTip({ left: rect.left, top: rect.top });
-          },
-          onMouseLeave: () => setTip(undefined),
-        },
-        h("span", { className: "muse-pill-dot", "aria-hidden": "true" }),
+      return h("span", {
+        className: "muse-pill", "data-state": state, tabIndex: 0, ref: trigger,
+        "aria-describedby": tip ? tipId : undefined,
+        onMouseEnter: openTip, onFocus: openTip, onClick: openTip,
+        onMouseLeave: scheduleClose, onBlur: () => setTip(undefined),
+      },
         h("span", { className: "muse-pill-label" }, t("pill.label")),
-        h("span", null, text),
-        quota.showLabel && activeAccount !== undefined
-          ? h("span", { className: "muse-pill-acct" }, `\u00B7 ${activeAccount.label}`)
-          : null,
-        h(Tooltip, { rows, anchor: tip }),
+        h(UsageMeter, { pct }),
+        h("span", { className: "muse-pill-value" }, text),
+        quota.busy && h("span", null, t("pill.busy")),
+        quota.showLabel && activeAccount && h("span", { className: "muse-pill-acct" }, "· " + activeAccount.label),
+        h(Tooltip, { id: tipId, anchor: tip, title: t("pill.label") + " " + t("settings.scope"),
+          status, pct, state, rows, onMouseEnter: cancelClose, onMouseLeave: scheduleClose,
+          updated: live?.at && t("pill.updated") + " · " + relativeTime(live.at, locale) }),
       );
     }
 
