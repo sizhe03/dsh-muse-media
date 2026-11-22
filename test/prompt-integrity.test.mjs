@@ -1,70 +1,64 @@
-// The integrity check must actually reject a truncated composer, and must not reject legitimate text.
+// Exercise the production predicate, not a copy.
 //
-// A check that passes everything is decoration. These cases come from the real failure: 336 characters sent, 324 in the box.
+// The previous version defined isTruncated() locally and used assert.match on index.js to confirm it was wired. A local copy
+// cannot fail when the shipped condition changes, and a source-text assertion breaks on a rename while proving nothing about
+// behaviour.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { isPromptComplete } from "../lib/muse.js";
 
-/** The same normalisation the host uses. */
-const normalise = (text) => String(text).replace(/\s+/g, " ").trim();
-
-/** The decision, extracted so it can be tested without a page. */
-const isTruncated = (expected, written) => {
-  const a = normalise(expected);
-  const b = normalise(written);
-  return a.length !== b.length || !b.startsWith(a.slice(0, 40)) || !b.endsWith(a.slice(-40));
-};
+/* ---- the failure this exists for ---- */
 
 test("a shortened composer is rejected", () => {
-  // The real case: the tail was cut off.
+  // Measured: 336 characters sent, 324 held. The tail — the delivery spec — never arrived.
   const sent = "一枚烟紫色半透明游戏卡带，像从一台老掌机里刚拔出来。".repeat(10) + "正方形 1:1 构图，完整方图，sRGB，摄影级材质细节。";
-  const written = sent.slice(0, sent.length - 12);
-  assert.equal(isTruncated(sent, written), true, "a 12-character shortfall must be caught");
+  const held = sent.slice(0, sent.length - 12);
+  assert.equal(isPromptComplete(sent, held), false);
 });
 
 test("the exact text is accepted", () => {
   const sent = "一只橘猫坐在窗台上，午后光线。\n\n正方形 1:1 构图。";
-  assert.equal(isTruncated(sent, sent), false);
+  assert.equal(isPromptComplete(sent, sent), true);
 });
 
-test("whitespace differences are not treated as truncation", () => {
-  // The page collapses whitespace; that must not read as a difference.
-  const sent = "第一段。\n\n\n第二段。";
-  const written = "第一段。 第二段。";
-  assert.equal(isTruncated(sent, written), false);
+test("whitespace differences are not truncation", () => {
+  // The page collapses runs of whitespace; that must not read as a loss.
+  assert.equal(isPromptComplete("第一段。\n\n\n第二段。", "第一段。 第二段。"), true);
 });
 
-test("a same-length rewrite is caught by comparing both ends", () => {
-  // A real same-length rewrite differs at one end: a summariser replaces a clause but keeps the length.
-  const sent = "开头部分说明了用途，" + "中间是画面描述。".repeat(5) + "结尾规定了交付规格和后续说明。";
-  const written = "开头部分说明了用途，" + "中间被改写成别的句子。".repeat(5) + "结尾规定了交付规格和后续说明。".padEnd(13, "。");
-
-  // Same opening, different middle, possibly different length — either way it must be rejected.
-  assert.equal(isTruncated(sent, written), true, "a rewritten middle must not pass");
-
-  // And a genuine same-length, tail-different case:
-  const a = "这是一段用于测试的完整提示词，包含具体的交付规格。";
-  const b = "这是一段用于测试的完整提示词，包含具体的格式要求。";
-  assert.equal(b.length, a.length, "fixture: equal length");
-  assert.equal(isTruncated(a, b), true, "equal length but a different tail must be caught");
+test("equal length with a different tail is rejected", () => {
+  // Length alone would pass this. The tail comparison is what catches it.
+  const sent = "这是一段用于测试的完整提示词，包含具体的交付规格。";
+  const held = "这是一段用于测试的完整提示词，包含具体的格式要求。";
+  assert.equal(held.length, sent.length, "fixture: equal length");
+  assert.equal(isPromptComplete(sent, held), false);
 });
 
-test("an empty composer is caught before this check, by length === 0", () => {
-  // Documents the ordering: the empty case has its own error and its own code.
-  assert.equal(normalise("").length, 0);
+test("a rewrite that keeps the opening is rejected", () => {
+  // The failure mode a per-paragraph summary produces: the first sentence survives, the rest changes.
+  const sent = "开头说明了用途。中间是画面描述的内容。结尾规定了交付规格。";
+  const held = "开头说明了用途。中间被改写成别的句子。结尾规定了交付规格。";
+  assert.equal(isPromptComplete(sent, held), false);
 });
 
-/* ---- the wiring must exist in both files ---- */
-test("the check reads the composer after the write has settled", () => {
-  const index = readFileSync("index.js", "utf8");
+/* ---- degenerate inputs ---- */
 
-  // The measurement must come from the snapshot, not from setPrompt's own return value: that value is read before React
-  // reconciles and reports what was written rather than what the box holds.
-  assert.match(index, /composerSnapshot\?\.composer\?\.text/, "must read the composer through a snapshot, tolerantly");
-  assert.doesNotMatch(index, /promptResult\.text/, "must not trust the pre-reconciliation echo");
+test("an empty composer is not complete for a non-empty prompt", () => {
+  assert.equal(isPromptComplete("有内容", ""), false);
+});
 
-  assert.match(index, /code: "PROMPT_INCOMPLETE"/);
-  assert.match(index, /expectedText\.length !== held\.length/, "length comparison present");
-  assert.match(index, /held\.startsWith\(expectedText\.slice\(0, 40\)\)/, "head comparison present");
-  assert.match(index, /held\.endsWith\(expectedText\.slice\(-40\)\)/, "tail comparison present");
+test("an empty prompt against an empty composer is complete", () => {
+  // Nothing was sent and nothing is held: there is no loss to report.
+  assert.equal(isPromptComplete("", ""), true);
+});
+
+test("null and undefined are handled without throwing", () => {
+  assert.equal(isPromptComplete("内容", undefined), false);
+  assert.equal(isPromptComplete(undefined, ""), true);
+  assert.equal(isPromptComplete(undefined, undefined), true);
+});
+
+test("a much longer composer is rejected", () => {
+  // Trailing text appears (an autocomplete, a stray paste). Length catches it.
+  assert.equal(isPromptComplete("请求的内容", "请求的内容加上一些不是发出去的东西"), false);
 });

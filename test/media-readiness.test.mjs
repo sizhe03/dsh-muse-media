@@ -1,77 +1,49 @@
-// The gate must reject the placeholder and accept the original.
+// Exercise the production predicate, not a copy of it.
 //
-// Real measurements from a live thread: the attachment node first reports 498×498 (30 KB), then 1600×1600 (306 KB). The plugin
-// fetched at the first moment. This tests the decision, not the browser: given successive sizes, when may it fetch?
+// The previous version defined its own gate and then used assert.match on the source to confirm wiring. That passes when the
+// real condition is broken: nothing executes the production branch. `isSizeSettled` is now exported from lib/muse.js, so these
+// tests call the code that ships.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { isSizeSettled } from "../lib/muse.js";
 
-/**
- * The rule under test, mirroring waitMedia: a candidate may be fetched only when its size equals the one recorded on the
- * previous poll for that same source.
- */
-const createGate = () => {
-  const remembered = new Map();
-  return (source, size) => {
-    const previous = remembered.get(source);
-    if (previous === size) return true;
-    remembered.set(source, size);
-    return false;
-  };
-};
+/* ---- the behaviour that matters, measured on a real page ---- */
 
-test("the first sighting of a node is never fetched", () => {
-  // This is the bug: 498×498 looked like a result.
-  const ready = createGate();
-  assert.equal(ready("blob:a", "498×498"), false, "the placeholder must not be taken");
+test("the first sighting of a node is never settled", () => {
+  // The bug this exists for: 498×498 looked like a result and was fetched straight away.
+  assert.equal(isSizeSettled("498×498", undefined), false);
 });
 
-test("a stable size is accepted on the next poll", () => {
-  const ready = createGate();
-  ready("blob:a", "498×498");
-  assert.equal(ready("blob:a", "498×498"), true, "an unchanged size is the signal");
+test("an unchanged size is settled", () => {
+  assert.equal(isSizeSettled("498×498", "498×498"), true);
 });
 
-test("a size that grows is not accepted yet", () => {
-  // The real sequence: 498 placeholder, then 1600 original.
-  const ready = createGate();
-  assert.equal(ready("blob:a", "498×498"), false);
-  assert.equal(ready("blob:a", "1600×1600"), false, "the change itself means it is still loading");
-  assert.equal(ready("blob:a", "1600×1600"), true, "settled at the original size");
+test("a size that grew is not settled yet", () => {
+  // The real sequence: placeholder first, original after.
+  assert.equal(isSizeSettled("1600×1600", "498×498"), false);
+  assert.equal(isSizeSettled("1600×1600", "1600×1600"), true);
 });
 
-test("a genuinely small result is still delivered", () => {
-  // The reason this cannot be "wait until it is big": small outputs are legitimate.
-  const ready = createGate();
-  assert.equal(ready("blob:small", "320×320"), false);
-  assert.equal(ready("blob:small", "320×320"), true);
+test("a legitimately small result is still delivered", () => {
+  // The reason the rule cannot be "wait until it is large".
+  assert.equal(isSizeSettled("320×320", undefined), false);
+  assert.equal(isSizeSettled("320×320", "320×320"), true);
 });
 
-test("sizes are tracked per source", () => {
-  // Two attachments on one page must not share state, or the second would inherit the first's settled flag.
-  const ready = createGate();
-  ready("blob:a", "498×498");
-  assert.equal(ready("blob:b", "498×498"), false, "a different source starts fresh");
-  assert.equal(ready("blob:a", "498×498"), true);
+/* ---- the edge cases the review raised ---- */
+
+test("a zero size is never settled, even twice in a row", () => {
+  // A node whose image has not decoded reports 0×0. Two agreeing zeroes are not a measurement.
+  assert.equal(isSizeSettled("0×0", "0×0"), false, "0×0 must never pass");
+  assert.equal(isSizeSettled("0×498", "0×498"), false, "a zero width must not pass");
+  assert.equal(isSizeSettled("498×0", "498×0"), false, "a zero height must not pass");
 });
 
-/* ---- the wiring ---- */
-test("waitMedia records the size and loops instead of fetching", () => {
-  const muse = readFileSync("lib/muse.js", "utf8");
-  assert.match(muse, /const lastSize = new Map\(\)/, "per-source state");
-  assert.match(muse, /if \(remembered !== candidate\.size\)/, "compares against the recorded size");
-  assert.match(muse, /lastSize\.set\(candidate\.source, candidate\.size\)/, "records before continuing");
-  assert.match(muse, /await delay\(SAMPLE_MS\);\s*\n\s*continue;/, "waits and re-polls rather than fetching");
-});
-
-test("the candidate carries the size it was measured at", () => {
-  const muse = readFileSync("lib/muse.js", "utf8");
-  assert.match(muse, /return \{ \.\.\.candidate, size: `\$\{candidate\.width\}×\$\{candidate\.height\}` \}/);
-});
-
-test("natural pixels are read, not the CSS box", () => {
-  // The page renders the image at 220px wide; naturalWidth is what tells 498 from 1600.
-  const muse = readFileSync("lib/muse.js", "utf8");
-  assert.match(muse, /naturalWidth/, "the snapshot must read naturalWidth");
-  assert.match(muse, /naturalHeight/);
+test("an unparseable size is never settled", () => {
+  assert.equal(isSizeSettled(undefined, undefined), false);
+  assert.equal(isSizeSettled(null, null), false);
+  assert.equal(isSizeSettled("", ""), false);
+  assert.equal(isSizeSettled("1600", "1600"), false, "missing the separator");
+  assert.equal(isSizeSettled("1600x1600", "1600x1600"), false, "ascii x is not the format");
+  assert.equal(isSizeSettled(1600, 1600), false, "a number is not a size string");
 });

@@ -38,7 +38,7 @@ import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
-import { MusePage, THREAD_URL } from "./lib/muse.js";
+import { MusePage, THREAD_URL, isPromptComplete } from "./lib/muse.js";
 import { AccountStore, TaskStore, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
@@ -1599,19 +1599,10 @@ class MuseRuntime {
         const composerSnapshot = await page.snapshot();
         const composerText = composerSnapshot?.composer?.text;
         if (typeof composerText === "string") {
-          const normalise = (text) => String(text).replace(/\s+/g, " ").trim();
-          const expectedText = normalise(outgoing);
-          const held = normalise(composerText);
-          /**
-           * Three comparisons, because each catches a different loss: length catches truncation, the head catches a
-           * wholesale replacement, and the tail catches the reported case — the opening preserved, the last sentence gone.
-           */
-          const mismatched =
-            expectedText.length !== held.length ||
-            !held.startsWith(expectedText.slice(0, 40)) ||
-            !held.endsWith(expectedText.slice(-40));
-
-          if (mismatched) {
+          if (!isPromptComplete(outgoing, composerText)) {
+            const normalise = (text) => String(text).replace(/\s+/g, " ").trim();
+            const expectedText = normalise(outgoing);
+            const held = normalise(composerText);
             throw new MuseFailure(
               `提示词没有完整进入输入框，已停止（没有提交）。` +
                 `期望 ${expectedText.length} 字，输入框里是 ${held.length} 字。` +
