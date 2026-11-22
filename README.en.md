@@ -58,36 +58,58 @@ While idle the pill shows **the account you are looking at**; the next generatio
 
 A copy installed from a local directory (`file:` / `link:`) is never marked updatable, because its code is on your disk. Run `npm install dsh-muse-media` again to move forward.
 
-## When the output looks wrong
+## When the output size is wrong
 
-**The plugin does not transcode.** It writes the bytes Muse returned, unchanged: no ffmpeg, no resizing, no re-encoding. A "low quality output" therefore almost always happens after the plugin.
+**Measure first, read code second.** This is learned the hard way: hours went into reading code without finding it, and one
+look at the file header answered it in five seconds.
 
-Three checks, ten seconds:
+### 1. Measure the file you actually have
 
-**1. What did the plugin actually write?**
+Explorer → right-click → Properties → Details → Frame width / Frame height.
+
+Or by script:
+
+```powershell
+python -c "from PIL import Image; im=Image.open(r'path'); print(im.size)"
+```
+
+**Do this first: it is the fastest check and it cannot mislead.**
+
+### 2. Confirm the plugin produced that file
 
 ```powershell
 $tasks = Get-Content "$env:USERPROFILE\.dsh\muse-media\tasks.json" -Raw | ConvertFrom-Json
 $tasks.tasks | Where-Object { $_.media } | Select-Object -First 1 -ExpandProperty media
 ```
 
-That path is the file this plugin produced.
+That path is what the plugin wrote.
 
-**2. Compare fingerprints**
+### 3. Compare fingerprints if needed
 
 ```powershell
-Get-FileHash 'your-file.mp4' -Algorithm SHA256
-Get-FileHash "<the path from step 1>" -Algorithm SHA256
+Get-FileHash 'your-file.png' -Algorithm SHA256
+Get-FileHash "<the path from step 2>" -Algorithm SHA256
 ```
 
-Equal → the plugin is not the problem; something downstream changed the file.
-Different → that file did not come from this plugin.
+### What each result means
 
-**3. Read the resolution**
+| Result | Conclusion | What to do |
+|---|---|---|
+| The file appears in no task record | The plugin did not produce it | Check your own pipeline for another step |
+| Recorded, correct size | The plugin delivered correctly | The problem is downstream (playback, transcoding) |
+| Recorded, **smaller than expected** | Capture-layer bug | Known before 1.1.0; upgrade and regenerate |
+| Recorded, fingerprints differ | The file was replaced | Check intermediate steps |
 
-Explorer → right-click → Properties → Details → Frame width / Frame height. Muse currently returns square video; the plugin stores whatever size it is given.
+**Note the third row**: in that case **the fingerprints match** — the plugin stored exactly what it fetched. So a fingerprint
+comparison cannot detect this class of bug; **the size must be measured.**
 
-**A common false positive**: players and preview tools generate low-resolution cache copies under similar names. The fingerprint comparison above rules that out immediately.
+### Known issue
+
+**Before 1.1.0**, every image was 498×498 — about a third of the length Muse shows.
+Fixed in 1.2.0 by waiting for the attachment's size to settle. Historical files need regenerating, or download the originals
+from the corresponding Muse chat — downloading by hand costs no allowance.
+
+**The plugin does not transcode.** It writes the bytes Muse returned, unchanged: no ffmpeg, no resizing, no re-encoding.
 
 ## What it costs
 
@@ -184,7 +206,7 @@ happens only on a machine without Chrome, and it says so.
 ## Development
 
 ```bash
-npm test        # 98 checks: manifest, index, encoding, theme tokens, CI structure, decision layer, page layer, refusal recognition
+npm test        # 128 checks: manifest, index, encoding, theme tokens, CI structure, decision layer, page layer, refusal recognition
 npm run check   # syntax plus the tests
 ```
 
