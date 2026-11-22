@@ -79,6 +79,7 @@ window.__ModuleLoader__.load({
 
     /** Pill refresh cadence; the Host caches its own reads for 60 s. */
     const PILL_INTERVAL_MS = 45_000;
+    const SETTINGS_INTERVAL_MS = 15_000;
 
     /** How many `verify` polls to spend watching one sign-in window. */
     const LOGIN_WATCH_TRIES = 40;
@@ -88,10 +89,15 @@ window.__ModuleLoader__.load({
 
     const ZH = {
       "settings.manage": "管理账号",
+      "settings.signInForQuota": "登录后可读取额度",
+      "settings.duration": "耗时",
+      "settings.weeklyReadings": "生成前后周额度已用",
+      "settings.recordDetails": "生成详情",
       "settings.closeDetails": "收起管理",
       "settings.availability": "暂不可用",
       "settings.generationSettings": "生成与显示",
-      "settings.execution": "浏览器与等待时间",
+      "settings.execution": "浏览器与账号",
+      "settings.timings": "刷新与等待时间",
       "settings.retryAccounts": "每项任务最多尝试的账号数",
       "settings.retryHint": "仅在确认登录失效时切换账号。",
       "settings.accountCount": "已添加 {count} 个账号",
@@ -143,11 +149,11 @@ window.__ModuleLoader__.load({
         "每个账号有自己的浏览器数据目录。首次登录会打开一个可见窗口，你在窗口里登录一次即可；凭据由浏览器保存，插件不读取。",
       "settings.addAccount": "新增账号",
       "settings.accountsTitle": "账号",
-      "settings.disk": "占用磁盘",
+      "settings.disk": "本地存储",
       "settings.history": "最近生成",
       "settings.paneAccounts": "账号",
-      "settings.paneHistory": "记录",
-      "settings.paneAdvanced": "高级",
+      "settings.paneHistory": "生成记录",
+      "settings.paneAdvanced": "设置",
       "settings.historyEmpty": "还没有生成记录。",
       "settings.showAll": "显示全部",
       "settings.stateUnknown": "结果未知",
@@ -161,9 +167,9 @@ window.__ModuleLoader__.load({
       "settings.openBrowser": "打开浏览器",
       "settings.opening": "正在打开…",
       "settings.openMediaDir": "打开媒体文件夹",
-      "settings.fieldIndependent": "独立生成",
+      "settings.fieldIndependent": "提示 Muse 独立生成",
       "settings.fieldIndependentHint":
-        "生成时提醒 Muse 以本次描述和参考素材为准。长期记忆仍然开启。",
+        "每次生成时，请 Muse 只参考本次提示词和附件。Muse 的长期记忆仍然开启。",
       "settings.fieldPill": "在输入框显示额度",
       "settings.fieldPillHint": "在对话输入框旁边显示本周已用百分比。",
       "settings.fieldIdle": "空闲回收（秒）",
@@ -249,10 +255,15 @@ window.__ModuleLoader__.load({
 
     const EN = {
       "settings.manage": "Manage account",
+      "settings.signInForQuota": "Sign in to read usage",
+      "settings.duration": "Duration",
+      "settings.weeklyReadings": "Weekly usage before → after",
+      "settings.recordDetails": "Generation details",
       "settings.closeDetails": "Close controls",
       "settings.availability": "Unavailable",
       "settings.generationSettings": "Generation & display",
-      "settings.execution": "Browser & timeouts",
+      "settings.execution": "Browser & accounts",
+      "settings.timings": "Refresh & timeouts",
       "settings.retryAccounts": "Account attempts per task",
       "settings.retryHint": "Switches accounts only after a confirmed sign-out.",
       "settings.accountCount": "{count} accounts added",
@@ -295,11 +306,11 @@ window.__ModuleLoader__.load({
         "Each account keeps its own browser data directory. The first sign-in opens a visible window; you sign in once there. The browser holds the credential and the plugin never reads it.",
       "settings.addAccount": "Add account",
       "settings.accountsTitle": "Accounts",
-      "settings.disk": "On disk",
+      "settings.disk": "Local storage",
       "settings.history": "Recent generations",
       "settings.paneAccounts": "Accounts",
       "settings.paneHistory": "History",
-      "settings.paneAdvanced": "Advanced",
+      "settings.paneAdvanced": "Settings",
       "settings.historyEmpty": "Nothing generated yet.",
       "settings.showAll": "Show all",
       "settings.stateUnknown": "unknown",
@@ -315,7 +326,7 @@ window.__ModuleLoader__.load({
       "settings.openMediaDir": "Open the media folder",
       "settings.fieldIndependent": "Ask for an independent generation each time",
       "settings.fieldIndependentHint":
-        "When on, every generation is prefixed with ‘use this description and these references; do not carry over characters, scenes, composition or style from earlier conversations or work'. Muse's long-term memory stays on — this only stops it continuing from last time.",
+        "Ask Muse to use only this prompt and its attachments for each generation. Muse’s long-term memory stays on.",
       "settings.fieldPill": "Show usage beside the composer",
       "settings.fieldPillHint": "Display the weekly percentage next to the message box.",
       "settings.fieldIdle": "Reap an idle browser after (s)",
@@ -521,6 +532,7 @@ window.__ModuleLoader__.load({
 .muse-tab[data-active="true"]::after{content:"";position:absolute;height:2px;inset:auto 0 -1px;background:var(--muse-accent);border-radius:2px;}
 .muse-section,.muse-pane{display:grid;gap:13px;min-width:0;}
 .muse-list-head,.muse-account-top,.muse-record-head,.muse-allowance-line,.muse-foot-row,.muse-savebar{display:flex;align-items:center;gap:10px;min-width:0;}
+.muse-list-label{display:flex;align-items:baseline;gap:7px;}
 .muse-list-head,.muse-record-head,.muse-foot-row{justify-content:space-between;}
 .muse-btn,.muse-input,.muse-filter button{font:inherit;font-size:13px;}
 .muse-btn{appearance:none;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;min-height:32px;
@@ -540,6 +552,10 @@ window.__ModuleLoader__.load({
 .muse-account + .muse-account,.muse-record + .muse-record{border-top:1px solid var(--muse-line);}
 .muse-identity,.muse-account-meta,.muse-foot-figs{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;min-width:0;}
 .muse-identity{flex:1;}
+.muse-disclosure{appearance:none;background:transparent;border:0;border-radius:5px;padding:4px 2px;color:inherit;font:inherit;text-align:start;cursor:pointer;}
+.muse-disclosure::after{content:"";display:inline-block;width:6px;height:6px;margin:0 4px 2px 8px;border:solid var(--muse-sub);border-width:0 1.5px 1.5px 0;transform:rotate(-45deg);}
+.muse-disclosure[aria-expanded="true"]::after{transform:rotate(45deg);}
+.muse-unsaved{display:inline-block;vertical-align:middle;margin-inline-start:5px;width:6px;height:6px;border-radius:50%;background:var(--dsw-alias-state-warn-primary);}
 .muse-name,.muse-record-copy strong{font-size:14px;font-weight:600;overflow-wrap:anywhere;}
 .muse-chip,.muse-tag{display:inline-flex;align-items:center;padding:1px 7px;border-radius:5px;background:var(--dsw-alias-interactive-bg-hover);font-size:12px;line-height:18px;}
 .muse-state{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muse-ink);}
@@ -556,9 +572,9 @@ window.__ModuleLoader__.load({
 .muse-allowance-line button{margin-left:auto;color:var(--muse-accent);}
 .muse-allowance progress{appearance:none;width:100%;height:4px;border:0;border-radius:4px;overflow:hidden;}
 .muse-allowance progress::-webkit-progress-bar{background:var(--dsw-alias-border-l2);}
-.muse-allowance progress::-webkit-progress-value{background:var(--muse-accent);border-radius:4px;}
+.muse-allowance progress::-webkit-progress-value{background:var(--dsw-alias-state-business-primary);border-radius:4px;}
 .muse-allowance[data-tone="high"] progress::-webkit-progress-value{background:var(--dsw-alias-state-warn-primary);}
-.muse-allowance[data-tone="full"] progress::-webkit-progress-value{background:var(--dsw-alias-state-error-primary);}
+.muse-allowance[data-tone="full"] progress::-webkit-progress-value{background:var(--dsw-alias-state-warn-primary);}
 .muse-account-meta:empty{display:none;}
 .muse-account-details{display:grid;gap:10px;padding-top:12px;border-top:1px solid var(--muse-line);}
 .muse-confirm p{flex-basis:100%;}
@@ -582,6 +598,9 @@ window.__ModuleLoader__.load({
 .muse-record-head{align-items:center;}
 .muse-record-copy{flex:1;display:grid;gap:4px;min-width:0;}
 .muse-record-head .muse-state{flex:none;}
+.muse-record-toggle[aria-expanded="false"] strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.muse-record-facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;padding-inline-start:52px;font-size:12px;}
+.muse-record-facts dt{color:var(--muse-sub);}.muse-record-facts dd{overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
 .muse-preview{padding-inline-start:52px;display:grid;gap:8px;justify-items:start;}
 .muse-preview-media{max-width:100%;max-height:min(320px,50vh);border-radius:8px;}
 .muse-pane>.muse-btn{justify-self:start;}
@@ -600,17 +619,18 @@ window.__ModuleLoader__.load({
 .muse-fold>summary{padding:13px 16px;cursor:pointer;font-weight:500;border-radius:inherit;}
 .muse-fold>summary::marker{color:var(--muse-sub);}
 .muse-fold .muse-fields{border:0;background:transparent;}
-.muse-savebar{flex-wrap:wrap;justify-content:flex-end;}
+.muse-savebar{position:sticky;bottom:0;z-index:1;flex-wrap:wrap;justify-content:flex-end;padding:10px 12px;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--muse-line);border-radius:10px;box-shadow:0 2px 8px var(--dsw-alias-border-l2);}
 .muse-savebar span{margin-right:auto;font-size:13px;}
 .muse-diag dl{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px;padding:0 16px 12px;}
 .muse-diag dd{font-size:13px;overflow-wrap:anywhere;}
 .muse-diag-actions{margin:0 16px 14px;}
 .muse-foot{display:grid;padding:14px 16px;gap:8px;}
+.muse-foot-actions p{flex-basis:100%;}
 .muse-foot-row,.muse-account-top{flex-wrap:wrap;}
 .muse-foot-fig{display:flex;align-items:baseline;gap:5px;font-size:12px;}
 .muse-foot-fig strong{font-size:14px;}
 @container(max-width:440px){.muse-account,.muse-record{padding:13px;}
- .muse-account-top{gap:6px;}.muse-identity{flex-basis:100%;}.muse-field{gap:10px;}
+ .muse-account-top{gap:6px;}.muse-identity{flex:1 1 135px;}.muse-record-facts,.muse-preview{padding-inline-start:0;}.muse-field{gap:10px;}
  .muse-record-head{align-items:flex-start;flex-wrap:wrap;}.muse-tabs{gap:15px;}}
 @media(forced-colors:active){.muse-switch{appearance:auto;}.muse-switch::before{display:none;}}
 `;
@@ -844,6 +864,7 @@ window.__ModuleLoader__.load({
       const hasQuota = Number.isFinite(quota?.usedPct);
       const tone = !hasQuota ? "none" : quota.usedPct >= 100 ? "full" : quota.usedPct >= 80 ? "high" : "ok";
       const [expanded, setExpanded] = useState(false);
+      const detailsId = React.useId();
       const stateLabel = account.status === "ready" && !account.usable
         ? account.usableReason || t("settings.availability") : statusText;
       const disabled = pending !== undefined;
@@ -885,21 +906,21 @@ window.__ModuleLoader__.load({
       return h("article", { className: "muse-account" },
         h("div", { className: "muse-account-top" },
           h("div", { className: "muse-identity" },
-            h("strong", { className: "muse-name" }, account.label || account.id),
+            h("button", { type: "button", className: "muse-name muse-disclosure", "aria-expanded": expanded,
+              "aria-controls": expanded ? detailsId : undefined, title: t(expanded ? "settings.closeDetails" : "settings.manage"),
+              onClick: () => { setExpanded(!expanded); setConfirming(false); } }, account.label || account.id),
             account.selected && h("span", { className: "muse-chip", title: t("settings.selectedHint") }, t("settings.selected")),
             h("span", { className: "muse-state", "data-tone": statusTone }, stateLabel)),
-          primaryAction,
-          h("button", { type: "button", className: "muse-btn muse-manage", "aria-expanded": expanded,
-            onClick: () => { setExpanded(!expanded); setConfirming(false); } },
-            t(expanded ? "settings.closeDetails" : "settings.manage"))),
+          primaryAction),
         h("div", { className: "muse-allowance", "data-tone": tone },
           h("div", { className: "muse-allowance-line" },
             h("span", null, t("settings.scope")),
-            h("strong", null, hasQuota ? t("pill.usedShort", { pct: quota.usedPct }) : t("settings.quotaNeverShort")),
+            hasQuota ? h("strong", null, t("pill.usedShort", { pct: quota.usedPct }))
+              : h("span", { className: "muse-meta" }, t(needsSignIn ? "settings.signInForQuota" : "settings.quotaNeverShort")),
             tone === "high" && h("span", { className: "muse-meta" }, t("settings.quotaHigh")),
             tone === "full" && h("span", { className: "muse-meta" }, t("settings.quotaFull")),
             quota?.stale && h("span", { className: "muse-meta" }, t("settings.quotaStale")),
-            h("button", { type: "button", className: "muse-text-btn", disabled: disabled || busy,
+            !needsSignIn && h("button", { type: "button", className: "muse-text-btn", disabled: disabled || busy,
               onClick: () => onAction("refresh-quota", account.id) }, t("settings.refreshShort"))),
           hasQuota && h("progress", { max: 100, value: quota.usedPct, "aria-label": t("settings.scope") })),
         h("div", { className: "muse-account-meta" },
@@ -908,7 +929,7 @@ window.__ModuleLoader__.load({
           account.running && h("span", null, t("settings.running")),
           probe?.checkedAt && probeNode),
         quota?.error && h("p", { className: "muse-warning" }, quota.error),
-        expanded && h("div", { className: "muse-account-details" },
+        expanded && h("div", { id: detailsId, className: "muse-account-details" },
           h("div", { className: "muse-account-meta" },
             h("span", null, t("settings.lastUsed") + " " + (account.lastUsedAt ? relativeTime(account.lastUsedAt, locale) : t("settings.never"))),
             quota?.at && h("span", null, t("settings.updated") + " " + relativeTime(quota.at, locale)),
@@ -952,28 +973,34 @@ window.__ModuleLoader__.load({
       const [failed, setFailed] = useState(false);
       const kind = t("settings." + (task.kind === "video" ? "video" : "image"));
       const title = task.prompt || task.media || kind;
-      const cost = Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter) && task.quotaAfter >= task.quotaBefore
-        ? "+" + (task.quotaAfter - task.quotaBefore) + "%" : undefined;
-      const meta = [kind, task.account, relativeTime(task.at, locale),
-        task.durationMs && Math.round(task.durationMs / 1000) + "s", cost].filter(Boolean);
+      const meta = [kind, task.account, relativeTime(task.at, locale)].filter(Boolean);
+      const details = [];
+      if (Number.isFinite(task.durationMs)) {
+        details.push([t("settings.duration"), Math.round(task.durationMs / 1000) + " " + t("settings.seconds")]);
+      }
+      if (Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter)) {
+        details.push([t("settings.weeklyReadings"), task.quotaBefore + "% → " + task.quotaAfter + "%"]);
+      }
+      if (task.references?.length) details.push([t("settings.refs"), task.references.join("、")]);
       const states = { delivered: "delivered", failed: "stateFailed", unknown: "stateUnknown", "generated-unsaved": "unsaved" };
       const summary = [
         h(RecordThumbnail, { key: "thumb", task }),
         h("span", { key: "copy", className: "muse-record-copy" }, h("strong", null, title),
           h("span", { className: "muse-meta" }, meta.join(" · "))),
       ];
-      const previewAction = t(open ? "settings.hidePreview" : "settings.preview");
+      const summaryLabel = t(task.media ? (open ? "settings.hidePreview" : "settings.preview") : "settings.recordDetails");
       return h("article", { className: "muse-record" },
         h("div", { className: "muse-record-head" },
-          task.media
+          task.media || details.length
             ? h("button", { type: "button", className: "muse-record-summary muse-record-toggle",
-                "aria-expanded": open, "aria-label": previewAction + " · " + title, title: previewAction,
+                "aria-expanded": open, "aria-label": summaryLabel + " · " + title, title: summaryLabel,
                 onClick: () => { setFailed(false); setOpen(!open); } }, ...summary)
             : h("div", { className: "muse-record-summary" }, ...summary),
           h("span", { className: "muse-state", "data-tone": task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
             t("settings." + (states[task.state] || "stateUnknown")))),
         task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
-        task.references?.length > 0 && h("div", { className: "muse-meta" }, t("settings.refs") + " · " + task.references.join("、")),
+        open && details.length > 0 && h("dl", { className: "muse-record-facts" },
+          details.map(([label, value]) => h(React.Fragment, { key: label }, h("dt", null, label), h("dd", null, value)))),
         task.media && open && h("div", { className: "muse-preview" },
           failed ? h("span", { role: "status", className: "muse-meta" }, t("settings.mediaMissing")) :
             h(task.kind === "video" ? "video" : "img", {
@@ -990,7 +1017,7 @@ window.__ModuleLoader__.load({
       return h("section", { className: "muse-pane" },
         h("header", { className: "muse-list-head" },
           h("h4", null, t("settings.history")),
-          h("span", { className: "muse-meta" }, t("settings.historyCount", { count: history.length }))),
+          h("span", { className: "muse-meta" }, t("settings.historyCount", { count: filtered.length }))),
         h("div", { className: "muse-filter", role: "group", "aria-label": t("settings.history") },
           ["all", "image", "video"].map((key) => h("button", { type: "button", key, "aria-pressed": filter === key,
             onClick: () => { setFilter(key); setLimit(8); } }, t("settings." + key)))),
@@ -1008,10 +1035,9 @@ window.__ModuleLoader__.load({
      * whose effect the user cannot see immediately — a slider that saves on every
      * keystroke would restart the browser mid-typing.
      */
-    function SettingsSection({ settings, diagnostics, paths, browser, t, pending, onSave }) {
-      const [draft, setDraft] = useState({});
+    function SettingsSection({ settings, draft, setDraft, dirty, diagnostics, paths, browser, t, pending, onSave, children }) {
       const value = (key) => (key in draft ? draft[key] : settings[key]);
-      const dirty = Object.keys(draft).some((key) => draft[key] !== settings[key]);
+
 
       const fieldCopy = (label, hint) =>
         h(
@@ -1052,16 +1078,13 @@ window.__ModuleLoader__.load({
           }),
         );
 
-      const [saving, setSaving] = useState(false);
+      const saving = pending === "save-settings";
       return h("form", {
         className: "muse-pane",
         onSubmit: async (event) => {
           event.preventDefault();
           if (!dirty || pending || saving) return;
-          setSaving(true);
-          try {
-            if (await onSave(draft)) setDraft({});
-          } finally { setSaving(false); }
+          if (await onSave(draft)) setDraft({});
         },
       },
         h("h4", null, t("settings.generationSettings")),
@@ -1074,14 +1097,13 @@ window.__ModuleLoader__.load({
             toggle("headlessAfterLogin", t("settings.fieldHeadless"), t("settings.fieldHeadlessHint")),
             numberField("idleReapSeconds", t("settings.fieldIdle"), t("settings.fieldIdleHint"), 0, 86400),
             numberField("maxLiveBrowsers", t("settings.fieldConcurrent"), t("settings.fieldConcurrentHint"), 0, 8),
-            numberField("maxAccountsPerTask", t("settings.retryAccounts"), t("settings.retryHint"), 1, 5),
+            numberField("maxAccountsPerTask", t("settings.retryAccounts"), t("settings.retryHint"), 1, 5))),
+        h("details", { className: "muse-fold" },
+          h("summary", null, t("settings.timings")),
+          h("fieldset", { className: "muse-fields", disabled: saving, "aria-label": t("settings.timings") },
             numberField("autoRefreshQuotaSeconds", t("settings.fieldRefresh"), t("settings.fieldRefreshHint"), 0, 86400),
             numberField("imageTimeoutSeconds", t("settings.fieldImageTimeout"), undefined, 30, 1800),
             numberField("videoTimeoutSeconds", t("settings.fieldVideoTimeout"), undefined, 60, 3600))),
-        dirty && h("div", { className: "muse-savebar" },
-          h("span", { role: "status" }, t("settings.pendingChanges")),
-          h("button", { type: "button", className: "muse-btn", disabled: saving, onClick: () => setDraft({}) }, t("settings.discard")),
-          h("button", { type: "submit", className: "muse-btn muse-btn--primary", disabled: saving || pending !== undefined }, t("settings.save"))),
         diagnostics === undefined
           ? null
           : h(
@@ -1112,24 +1134,14 @@ window.__ModuleLoader__.load({
                 ),
               ),
             ),
+        children,
+        dirty && h("div", { className: "muse-savebar" },
+          h("span", { role: "status" }, t("settings.pendingChanges")),
+          h("button", { type: "button", className: "muse-btn", disabled: saving, onClick: () => setDraft({}) }, t("settings.discard")),
+          h("button", { type: "submit", className: "muse-btn muse-btn--primary", disabled: saving || pending !== undefined }, t("settings.save"))),
       );
     }
 
-    /**
-     * Disk usage and the one destructive action on this page.
-     *
-     * Split out because it belongs with the accounts — they are what fill the disk — and
-     * because the clear action needs its own confirmation state, which should not sit in
-     * the card's state next to the account form.
-     */
-
-    /**
-     * Disk usage and the one destructive action on this page.
-     *
-     * Split out because it belongs with the accounts — they are what fill the disk — and
-     * because the clear action needs its own confirmation state, which should not sit in
-     * the card's state next to the account form.
-     */
     function DiskFooter({ snapshot, t, pending, confirmingMedia, setConfirmingMedia, onClear, onRevealMediaDir }) {
       if (snapshot === undefined) return null;
       const profileTotal = Object.values(snapshot.profileBytes ?? {}).reduce(
@@ -1182,6 +1194,7 @@ window.__ModuleLoader__.load({
                   ? h(
                       React.Fragment,
                       null,
+                      h("p", { className: "muse-meta", role: "status" }, t("settings.clearMediaHint")),
                       h(
                         "button",
                         {
@@ -1225,7 +1238,7 @@ window.__ModuleLoader__.load({
     function MuseSettingsCard({ ctx }) {
       useStyleTag();
       const locale = useLocale(ctx);
-      const t = makeTranslate(locale);
+      const t = React.useMemo(() => makeTranslate(locale), [locale]);
       const [snapshot, setSnapshot] = useState(undefined);
       const [label, setLabel] = useState("");
       const [pending, setPending] = useState(undefined);
@@ -1249,21 +1262,40 @@ window.__ModuleLoader__.load({
        * this page to do.
        */
       const [pane, setPane] = useState("accounts");
+      const [draft, setDraft] = useState({});
+      const dirty = Object.keys(draft).some((key) => draft[key] !== snapshot?.settings?.[key]);
 
-      const load = useCallback(
-        async () => {
-          try {
-            setSnapshot(await fetchJson(ACCOUNTS_PATH));
-          } catch (error) {
-            setNotice({ kind: "error", text: `${t("settings.readFailed")}${String(error)}` });
-          }
-        },
-        [t],
-      );
+      const readVersion = React.useRef(0);
+      const load = useCallback(async () => {
+        const version = ++readVersion.current;
+        try {
+          const next = await fetchJson(ACCOUNTS_PATH);
+          if (version === readVersion.current) setSnapshot(next);
+        } catch (error) {
+          if (version === readVersion.current) setNotice({ kind: "error", text: t("settings.readFailed") + String(error) });
+        }
+      }, [t]);
 
       useEffect(() => {
         void load();
+        return () => { readVersion.current++; };
       }, [load]);
+
+      useEffect(() => {
+        if (pending !== undefined) return;
+        let reading = false;
+        const refresh = async () => {
+          if (document.hidden || reading) return;
+          reading = true;
+          try { await load(); } finally { reading = false; }
+        };
+        const timer = setInterval(refresh, SETTINGS_INTERVAL_MS);
+        document.addEventListener("visibilitychange", refresh);
+        return () => {
+          clearInterval(timer);
+          document.removeEventListener("visibilitychange", refresh);
+        };
+      }, [load, pending]);
 
       /**
        * Watch an open sign-in window.
@@ -1325,6 +1357,7 @@ window.__ModuleLoader__.load({
 
       const runAction = useCallback(
         async (action, accountId, extra) => {
+          readVersion.current++;
           setPending(action);
           setNotice(undefined);
           try {
@@ -1455,9 +1488,14 @@ window.__ModuleLoader__.load({
                     className: "muse-tab",
                     "aria-pressed": pane === entry.id,
                     "data-active": pane === entry.id,
-                    onClick: () => setPane(entry.id),
+                    onClick: () => {
+                      setPane(entry.id);
+                      if (notice?.kind === "ok") setNotice(undefined);
+                    },
                   },
                   entry.label,
+                  entry.id === "advanced" && dirty && h("span", { className: "muse-unsaved", title: t("settings.pendingChanges"),
+                    role: "img", "aria-label": t("settings.pendingChanges") }),
                 ),
               ),
             ),
@@ -1496,7 +1534,8 @@ window.__ModuleLoader__.load({
                 h(
                   "div",
                   { className: "muse-list-head" },
-                  h("div", null, h("h4", null, t("settings.title")), accounts.length > 0 && h("span", { className: "muse-meta" }, t("settings.accountCount", { count: accounts.length }))),
+                  h("div", { className: "muse-list-label" }, h("h4", null, t("settings.accountsTitle")),
+                    accounts.length > 0 && h("span", { className: "muse-meta", "aria-label": t("settings.accountCount", { count: accounts.length }) }, accounts.length)),
                   h(
                     "button",
                     {
@@ -1583,15 +1622,13 @@ window.__ModuleLoader__.load({
           : snapshot === undefined || snapshot.settings === undefined
             ? h("p", { className: "muse-meta" }, "\u2026")
             : h(
-                React.Fragment,
-                null,
-                h(SettingsSection, {
-                  settings: snapshot.settings,
+                SettingsSection, {
+                  settings: snapshot.settings, draft, setDraft, dirty,
                   diagnostics: snapshot.diagnostics, paths: snapshot.paths, browser: snapshot.browser,
                   t,
                   pending,
                   onSave: (patch) => runAction("save-settings", undefined, { settings: patch }),
-                }),
+                },
                 /** Disk, clearing and paths: maintenance, so they live with maintenance. */
                 h(DiskFooter, {
                   snapshot,

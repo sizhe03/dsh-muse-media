@@ -40,9 +40,9 @@ Muse has no separate video mode: the web UI has one composer, and "make a video"
 
 Three panes, each answering one question:
 
-- **Accounts** — which account runs, how much is left. Click the percentage to re-read it; "New account" reveals the label field.
-- **History** — what was generated, by which account, how long it took, and what it cost, with a weekly summary.
-- **Advanced** — browser and timeout values (applied immediately, no restart), diagnostics, disk usage and media clearing.
+- **Accounts** shows account status and weekly usage. Select an account name to expand its controls or use Refresh to read usage.
+- **History** filters recent generations by media type. Expand a record to preview its media and see the duration and before-and-after usage readings when available.
+- **Settings** groups generation preferences, browser options, timeouts and local storage. Drafts survive tab switches. Select Save to apply them.
 
 The pill beside the composer shows `Muse · 25% weekly · acc-01`; hover it for the plan, reset date, reading time, and which account the figure belongs to.
 
@@ -146,7 +146,7 @@ Muse's wording can change. When neither recogniser fires, the timeout error now 
 
 ## Configuration
 
-Every value lives in `cordis.patch.yml` and can also be changed in **Settings → Muse → Advanced**. The common ones:
+Every value lives in `cordis.patch.yml` and can also be changed in **Settings → Muse → Settings**. The common ones:
 
 | Key | Default | Meaning |
 |---|---|---|
