@@ -35,6 +35,7 @@ import {
 } from "node:fs";
 import { join, extname, basename } from "node:path";
 import { homedir } from "node:os";
+import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL } from "./lib/muse.js";
@@ -128,7 +129,28 @@ const DEFAULTS = {
   probeTimeoutSeconds: 60,
   showQuotaInComposer: true,
   debugPortBase: 19_220,
+  /**
+   * Whether each generation asks Muse to ignore its accumulated memory.
+   *
+   * Muse remembers the account, not just the current thread: a new thread does not clear what it learned from
+   * earlier work, so later generations drift toward whatever it saw before. This flag turns a fixed instruction on
+   * or off. It is a request, not a guarantee — the wording is what decides — so the text lives next to it and is
+   * changed in code, not typed by the user.
+   */
+  independentGeneration: true,
 };
+
+/**
+ * Sent ahead of every generation when `independentGeneration` is on.
+ *
+ * Kept as a constant because it is an instruction to the model, not a preference: the user decides **whether** to
+ * send it, and the wording is maintained here where it can be adjusted once for everyone.
+ *
+ * It names what must survive — this task's description and its uploaded references — because a plain "ignore
+ * history" risks throwing away the reference image and the video's first frame along with the drift.
+ */
+const INDEPENDENT_HINT =
+  "请独立完成本次生成，以本条描述和本次上传的参考素材为准。除非本条明确要求延续，否则不要沿用以往对话或作品中的角色、场景、构图和风格。";
 
 function asRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
@@ -439,6 +461,7 @@ class MuseRuntime {
    */
   #clampSetting(key, raw) {
     const RULES = {
+      independentGeneration: (value) => (typeof value === "boolean" ? value : undefined),
       headlessAfterLogin: (value) => (typeof value === "boolean" ? value : undefined),
       showQuotaInComposer: (value) => (typeof value === "boolean" ? value : undefined),
       idleReapSeconds: (value) => clampInt(value, 0, 86_400, 0),
@@ -504,6 +527,34 @@ class MuseRuntime {
 
   mediaDir() {
     return join(this.#paths.root, "media");
+  }
+
+  /**
+   * Open the media folder in the system file manager.
+   *
+   * The generated files are the product, and until now the only way to reach one was to guess a path under DSH_HOME. The
+   * plugin runs on the user's own machine, so it can simply ask the desktop to show the folder.
+   *
+   * Best-effort: on a headless box there is no file manager, and that must not become an error the UI has to handle.
+   */
+  revealMediaDir() {
+    const dir = this.mediaDir();
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch {
+      /* the spawn reports it */
+    }
+
+    const command =
+      process.platform === "win32" ? "explorer.exe" : process.platform === "darwin" ? "open" : "xdg-open";
+
+    try {
+      const child = spawn(command, [dir], { detached: true, stdio: "ignore", windowsHide: true });
+      child.unref();
+      return { ok: true, dir, command };
+    } catch (error) {
+      return { ok: false, dir, command, error: error instanceof Error ? error.message : String(error) };
+    }
   }
 
   /**
@@ -1170,6 +1221,24 @@ class MuseRuntime {
       kind,
       accountId: chosen.id,
       accountLabel: chosen.label,
+      /**
+       * Stored at birth, not on delivery.
+       *
+       * A run that fails still had a prompt, and "what did I ask for when this broke" is exactly the question the
+       * history should answer. Reference files are reduced to their names: the paths are temporary copies that may be
+       * gone by the time anyone reads the record.
+       */
+      prompt,
+      /**
+       * `references` is optional — a text-only generation has none. Reference files are reduced to their names: the
+       * originals are temporary copies that may be gone by the time anyone reads the record.
+       */
+      references: (references ?? [])
+        .map((entry) => {
+          const resolved = normalizeImageArgument(entry) ?? entry;
+          return typeof resolved === "string" ? basename(resolved) : undefined;
+        })
+        .filter(Boolean),
     });
 
     return this.runExclusive(
@@ -1501,7 +1570,14 @@ class MuseRuntime {
         }
 
         const baseline = await page.snapshot();
-        const promptResult = await page.setPrompt(prompt);
+        /**
+         * The independence hint rides in front of the task's own words when the switch is on.
+         *
+         * A blank line separates the instruction from the description so Muse reads them as instruction and content
+         * rather than one run-on sentence.
+         */
+        const outgoing = config.independentGeneration === false ? prompt : `${INDEPENDENT_HINT}\n\n${prompt}`;
+        const promptResult = await page.setPrompt(outgoing);
         if (promptResult.length === 0) {
           throw new MuseFailure("提示词没有进入输入框，已停止（没有提交）。", {
             code: "COMPOSER_EMPTY",
@@ -2323,6 +2399,9 @@ class MuseRuntime {
           quotaBefore: task.quotaBefore,
           quotaAfter: task.quotaAfter,
           note: task.note,
+          /** What was asked for. Tasks recorded before this field existed omit it. */
+          prompt: task.prompt,
+          references: task.references,
         })),
       /**
        * The settings a user would otherwise have to edit YAML to change.
@@ -2342,6 +2421,7 @@ class MuseRuntime {
         videoTimeoutSeconds: config.videoTimeoutSeconds,
         maxAccountsPerTask: config.maxAccountsPerTask,
         showQuotaInComposer: config.showQuotaInComposer !== false,
+        independentGeneration: config.independentGeneration !== false,
       },
       /** What the settings page cannot derive from the snapshot's other fields. */
       diagnostics: {
@@ -2488,6 +2568,33 @@ class MuseRuntime {
       note: "登录窗口已经打开。在窗口里完成登录后，点「验证登录」，或等设置卡自动检测。",
       snapshot: this.snapshot(),
     };
+  }
+
+  /**
+   * Show this account's browser window and land on the thread page.
+   *
+   * Separate from `loginAccount`: that one waits for a sign-in to complete, which is the wrong behaviour when the session is
+   * already fine and the user simply wants to look. Separate from `verifyAccount` too — verification is a real page
+   * operation that competes with generation for the single page slot; showing a window must not become a task.
+   *
+   * The window is reused if the account already has one, so this is safe to press twice.
+   */
+  async openBrowser(accountId) {
+    const account = this.#accounts.get(accountId);
+    if (account === undefined) {
+      throw new MuseFailure(`找不到账号 ${accountId}。`, { code: "NO_ACCOUNT", kind: FAILURE.INVALID });
+    }
+
+    const running = this.#browser.runningAccounts().includes(accountId);
+
+    await this.#browser.open(accountId, {
+      visible: true,
+      url: THREAD_URL,
+      timeoutMs: 90_000,
+    });
+
+    this.#log(`打开了 ${account.label} 的浏览器窗口`);
+    return { ok: true, already: running, snapshot: this.snapshot() };
   }
 
   async quitBrowser(accountId) {
@@ -3360,6 +3467,11 @@ export function apply(ctx, config) {
             const accountId = nonEmpty(asRecord(body).accountId);
             try {
               switch (action) {
+                case "open-browser": {
+                  return json(res, 200, await runtime.openBrowser(accountId));
+                }
+                case "reveal-media":
+                  return json(res, 200, runtime.revealMediaDir());
                 case "add":
                   return json(res, 200, runtime.addAccount(asRecord(body).label));
                 case "remove":
