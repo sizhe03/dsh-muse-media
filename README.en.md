@@ -24,6 +24,10 @@ After that, just ask in the conversation.
 
 To revise a result, ask “make the background of that image navy” or “slow down the last second of that video.” Both tools take the previous result’s `taskId` as `continueFromTaskId` and send the change in the original account and thread. For successive edits, use the latest version. New works start a fresh chat. For older records without a saved thread, continue in Muse directly or upload the old image as a reference.
 
+The **Muse** button beside the composer pins a Muse conversation for the current DSH chat. Both media tools continue its latest turn on the original account. Choose **Automatic** to restore the default. Search by title or account, or use **Add a Muse conversation link** for conversations created on the website or missing from older plugin records. Selecting a thread spends no quota.
+
+If only a preview can be retrieved, the image result and History identify it as a preview. Open the original Muse thread to download the image without generating it again.
+
 ## Requirements
 
 1. **Chrome, Chromium, or Edge.** No browser is bundled.

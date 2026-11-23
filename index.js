@@ -39,7 +39,7 @@ import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
-import { AccountStore, TaskStore, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
+import { AccountStore, TaskStore, ThreadLibrary, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
   MuseFailure,
@@ -353,6 +353,7 @@ class MuseRuntime {
   #paths;
   #accounts;
   #tasks;
+  #threads;
   #browser;
   #queue = Promise.resolve();
   #queueBusy = undefined;
@@ -377,6 +378,14 @@ class MuseRuntime {
     this.#paths = new MusePaths(resolveHome(config)).ensure();
     this.#accounts = new AccountStore(this.#paths.stateFile).load();
     this.#tasks = new TaskStore(this.#paths.tasksFile).load();
+    this.#threads = new ThreadLibrary(join(this.#paths.root, "threads.json"));
+    let changed = false;
+    for (const task of this.#tasks.list().reverse()) {
+      if (task.state === TASK_STATE.DELIVERED && task.accountId && task.prompt && museThreadUrl(task.threadUrl)) {
+        if (this.#threads.remember(task)) changed = true;
+      }
+    }
+    if (changed) this.#threads.save();
     this.#browser = new MuseBrowser({ paths: this.#paths, getConfig, log });
   }
 
@@ -1165,7 +1174,7 @@ class MuseRuntime {
    * whole attempt; the journal is written before the send, and every exit that
    * left a request possibly in flight records `unknown` and forbids a retry.
    */
-  async runMediaTask({ kind, prompt, references, continueFromTaskId }) {
+  async runMediaTask({ kind, prompt, references, continueFromTaskId, sessionId }) {
     const config = this.settings();
     if (typeof prompt !== "string" || prompt.trim() === "") {
       throw new MuseFailure("prompt 必填，且必须是非空字符串。", {
@@ -1212,7 +1221,14 @@ class MuseRuntime {
      */
     let parent;
     let chosen;
-    if (continueFromTaskId !== undefined) {
+    const selected = this.#threads.selected(sessionId);
+    if (selected) {
+      parent = { ...selected, selected: true };
+      chosen = this.#accounts.get(selected.accountId);
+      if (!chosen) throw new MuseFailure("所选 Muse 对话的账号已移除，请在输入框旁重新选择对话。", {
+        code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+      });
+    } else if (continueFromTaskId !== undefined) {
       parent = this.#tasks.get(continueFromTaskId);
       if (parent?.state !== TASK_STATE.DELIVERED || !parent.prompt ||
           !museThreadUrl(parent.threadUrl) || !parent.turn) {
@@ -1583,7 +1599,8 @@ class MuseRuntime {
 
         // The composer must start clean: a leftover attachment from an earlier
         // task would ride along with this prompt.
-        if (revision) await page.openRevision(revision, [parent.prompt, `${INDEPENDENT_HINT}\n\n${parent.prompt}`]);
+        if (parent?.selected) revision.turn = await page.openSelectedThread(revision.threadUrl);
+        else if (revision) await page.openRevision(revision, [parent.prompt, `${INDEPENDENT_HINT}\n\n${parent.prompt}`]);
         await page.clearComposer({ fresh: !revision });
 
         let upload = { attached: 0 };
@@ -1822,8 +1839,9 @@ class MuseRuntime {
             { code: "MEDIA_SAVE_FAILED", stage: "save", cause },
           );
         }
-        this.#tasks.update(task.id, {
+        const delivered = this.#tasks.update(task.id, {
           state: TASK_STATE.DELIVERED,
+          previewOnly: media.previewOnly,
           media: stored.file,
           threadUrl: museThreadUrl(media.threadUrl),
           turn: media.turn,
@@ -1842,6 +1860,14 @@ class MuseRuntime {
               : `；上传确认 ${uploadCount}/${files.length}` +
                 (roundCount === undefined ? "；消息附件未读到" : `；消息渲染 ${roundCount} 个`)),
         });
+
+        if (delivered?.threadUrl) {
+          try {
+            if (this.#threads.remember(delivered)) this.#threads.save();
+          } catch (error) {
+            this.#log("无法保存 Muse 对话索引：" + error.message);
+          }
+        }
 
         /**
          * Refresh the readout after this task releases the page.
@@ -2367,6 +2393,28 @@ class MuseRuntime {
     );
   }
 
+  threadPicker(body) {
+    const { sessionId, action } = body;
+    if (typeof sessionId !== "string" || !sessionId.trim() || sessionId.length > 256) {
+      throw new Error("缺少有效的 DSH 会话。");
+    }
+    if (action === "import-thread") {
+      const url = museThreadUrl(body.url);
+      if (!url || !this.#accounts.get(body.accountId)) throw new Error("请选择账号并填写有效的 Muse 对话链接。");
+      this.#threads.remember({ accountId: body.accountId, threadUrl: url,
+        prompt: "Muse · " + url.split("/").at(-1), title: nonEmpty(body.title)?.slice(0, 96), updatedAt: Date.now() });
+      this.#threads.select(sessionId, body.accountId + "|" + url);
+    } else if (action === "select-thread") {
+      if (body.key !== null && !this.#threads.threads.has(body.key)) throw new Error("找不到这条对话。");
+      this.#threads.select(sessionId, body.key);
+    }
+    return {
+      selected: this.#threads.selected(sessionId)?.key ?? null,
+      threads: [...this.#threads.threads.values()].sort((a, b) => b.updatedAt - a.updatedAt),
+      accounts: this.#accounts.list().map(({ id, label }) => ({ id, label })),
+    };
+  }
+
   /* ---------------- settings actions ---------------- */
 
   /** Everything the settings card renders in one call. */
@@ -2454,6 +2502,7 @@ class MuseRuntime {
           kind: task.kind,
           state: task.state,
           account: task.accountLabel,
+          previewOnly: task.previewOnly,
           at: task.createdAt,
           durationMs: task.durationMs,
           media: task.media === undefined ? undefined : basename(task.media),
@@ -3065,6 +3114,8 @@ function imageTool(runtime) {
       schema: {
         type: "object",
         properties: {
+          previewOnly: { type: "boolean" },
+          threadUrl: { type: "string" },
           attachment: {
             type: "object",
             additionalProperties: false,
@@ -3098,7 +3149,8 @@ function imageTool(runtime) {
           {
             type: "text",
             text:
-              `Muse 出图 · ${String(value.width ?? "?")}×${String(value.height ?? "?")} · ` +
+              (value.previewOnly ? "Muse 仅取到预览，可回原对话下载原图" + (value.threadUrl ? "（" + value.threadUrl + "）" : "") : "Muse 出图") +
+              ` · ${String(value.width ?? "?")}×${String(value.height ?? "?")} · ` +
               `账号 ${String(value.account ?? "?")} · ${String(value.seconds ?? "?")} 秒 · ` +
               `任务 ${String(value.taskId ?? "?")}` +
               (value.accountReason === undefined ? "" : `\n${String(value.accountReason)}`),
@@ -3132,11 +3184,13 @@ function imageTool(runtime) {
           ? brief
           : `${brief}\n\n(Preferred aspect ratio: ${size})`;
 
-      const result = await runtime.runMediaTask({ kind: "image", prompt, references, continueFromTaskId: record.continueFromTaskId });
+      const result = await runtime.runMediaTask({ kind: "image", prompt, references, continueFromTaskId: record.continueFromTaskId, sessionId: exec?.agent?.session?.id });
       const seconds = (Date.now() - startedAt) / 1000;
       const attachment = await runtime.persistImage(result, size);
       return {
         attachment,
+        previewOnly: result.media.previewOnly === true,
+        ...(result.media.previewOnly && result.media.threadUrl ? { threadUrl: result.media.threadUrl } : {}),
         width: result.media.width,
         height: result.media.height,
         mime: result.mime,
@@ -3271,6 +3325,7 @@ function videoTool(runtime) {
       const result = await runtime.runMediaTask({
         kind: "video",
         continueFromTaskId: record.continueFromTaskId,
+        sessionId: exec?.agent?.session?.id,
         prompt,
         // Several references are allowed, matching what the composer accepts. The
         // first is the starting frame; what Muse does with the rest is undocumented.
@@ -3620,6 +3675,10 @@ export function apply(ctx, config) {
             const accountId = nonEmpty(asRecord(body).accountId);
             try {
               switch (action) {
+                case "list-threads":
+                case "select-thread":
+                case "import-thread":
+                  return json(res, 200, runtime.threadPicker(body));
                 case "open-browser": {
                   return json(res, 200, await runtime.openBrowser(accountId));
                 }

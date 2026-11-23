@@ -502,6 +502,22 @@ window.__ModuleLoader__.load({
 .muse-tip{position:fixed;z-index:2147483000;box-sizing:border-box;overflow:auto;padding:12px 14px;
   border:1px solid var(--dsw-alias-border-l2);border-radius:10px;background:var(--dsw-alias-bg-layer-1);
   box-shadow:0 4px 16px rgba(0,0,0,.14);color:var(--dsw-alias-label-primary);font-size:12px;line-height:1.45;}
+.muse-thread-trigger{display:inline-flex;align-items:center;gap:4px;justify-content:center;height:30px;padding:0 8px;border:1px solid transparent;border-radius:8px;cursor:pointer;background:transparent;color:var(--dsw-alias-label-secondary);font:inherit;font-size:12px;}
+.muse-thread-trigger:hover,.muse-thread-choice:hover{background:var(--dsw-alias-interactive-bg-hover);}
+.muse-thread-trigger[data-pinned=true]{border-color:var(--dsw-alias-border-l2);color:var(--dsw-alias-brand-primary);}
+.muse-thread-trigger span{max-width:9ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.muse-thread-menu{position:fixed;inset:auto;margin:0;box-sizing:border-box;max-height:min(460px,85vh);overflow:auto;width:min(360px,calc(100vw - 16px));padding:12px;border:1px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1,Canvas);color:var(--dsw-alias-label-primary);box-shadow:0 6px 24px #0002;font:inherit;font-size:13px;}
+.muse-thread-menu::backdrop{background:transparent;}
+.muse-thread-menu header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.muse-thread-choice,.muse-thread-menu summary{padding:6px;cursor:pointer;}
+.muse-thread-menu button,.muse-thread-menu input,.muse-thread-menu select{font:inherit;color:inherit;}
+.muse-thread-choice{display:block;text-align:start;width:100%;border:0;background:transparent;border-radius:6px;}
+.muse-thread-choice strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.muse-thread-choice small,.muse-thread-menu p{color:var(--dsw-alias-label-secondary);}
+.muse-thread-choice[aria-pressed=true]{background:var(--dsw-alias-interactive-bg-hover);font-weight:600;}
+.muse-thread-menu input,.muse-thread-menu select{width:100%;box-sizing:border-box;padding:6px 8px;margin:3px 0;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;background:var(--dsw-alias-bg-layer-1,Canvas);}
+.muse-thread-menu details{border-top:1px solid var(--dsw-alias-border-l2);margin-top:6px;}
+.muse-thread-menu header button,.muse-thread-menu form button{background:transparent;border:1px solid var(--dsw-alias-border-l2);border-radius:6px;cursor:pointer;}
 .muse-tip-head,.muse-tip-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;}
 .muse-tip-head strong{font-size:13px;font-weight:600;}
 .muse-tip-head span,.muse-tip-key,.muse-tip-foot{color:var(--dsw-alias-label-secondary);}
@@ -813,6 +829,100 @@ window.__ModuleLoader__.load({
       );
     }
 
+    function ThreadPicker({ ctx, sessionId }) {
+      useStyleTag();
+      const locale = useLocale(ctx);
+      const tr = (zh, en) => String(locale).toLowerCase().startsWith("zh") ? zh : en;
+      const [view, setView] = useState();
+      const [open, setOpen] = useState(false);
+      const [query, setQuery] = useState("");
+      const [url, setUrl] = useState("");
+      const [title, setTitle] = useState("");
+      const [accountId, setAccount] = useState("");
+      const [error, setError] = useState("");
+      const [busy, setBusy] = useState(false);
+      const dialog = React.useRef(null);
+      const trigger = React.useRef(null);
+      const sequence = React.useRef(0);
+      const request = useCallback(async (action = "list-threads", fields = {}) => {
+        const seq = ++sequence.current;
+        setError(""); setBusy(true);
+        try {
+          const data = await fetchJson(ACTION_PATH, { method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action, sessionId, ...fields }) });
+          if (data.error || !Array.isArray(data.threads)) throw new Error(data.error || "Muse unavailable");
+          if (seq !== sequence.current) return;
+          setView(data);
+          if (action !== "list-threads") setOpen(false);
+        } catch (e) {
+          if (seq === sequence.current) setError(e.message);
+        } finally { if (seq === sequence.current) setBusy(false); }
+      }, [sessionId]);
+      useEffect(() => {
+        void request();
+        return () => { sequence.current++; };
+      }, [request]);
+      useEffect(() => {
+        if (!open || !dialog.current) return;
+        const node = dialog.current;
+        node.showModal();
+        node.querySelector('input[type="search"]')?.focus();
+        const place = () => {
+          const rect = trigger.current.getBoundingClientRect();
+          node.style.left = Math.max(8, Math.min(rect.right - node.offsetWidth, innerWidth - node.offsetWidth - 8)) + "px";
+          const above = rect.top > innerHeight - rect.bottom;
+          node.style.maxHeight = Math.max(60, Math.min(460, (above ? rect.top : innerHeight - rect.bottom) - 12)) + "px";
+          node.style.top = above ? "auto" : rect.bottom + 4 + "px";
+          node.style.bottom = above ? innerHeight - rect.top + 4 + "px" : "auto";
+        };
+        place(); window.addEventListener("resize", place);
+        return () => { window.removeEventListener("resize", place); node.close(); trigger.current?.focus(); };
+      }, [open]);
+      const chosen = view?.threads.find(row => row.key === view.selected);
+      const label = tr("Muse 对话", "Muse conversations");
+      const accounts = view?.accounts ?? [];
+      const account = accountId || accounts[0]?.id || "";
+      const accountLabel = id => accounts.find(a => a.id === id)?.label || id;
+      const threads = (view?.threads ?? []).filter(row =>
+        (row.title + " " + accountLabel(row.accountId)).toLowerCase().includes(query.trim().toLowerCase()));
+      const choose = key => request("select-thread", { key });
+      const choice = (key, title, subtitle) => h("button", { type: "button", key: key ?? "auto",
+        className: "muse-thread-choice", disabled: busy, "aria-pressed": !!view && view.selected === key,
+        onClick: () => choose(key) }, h("strong", null, (view && view.selected === key ? "✓ " : "") + title), h("small", null, subtitle));
+      return h(React.Fragment, null,
+        h("button", { type: "button", ref: trigger, className: "muse-thread-trigger", "data-pinned": !!chosen,
+          title: chosen ? label + " · " + chosen.title : label, "aria-label": label + (chosen ? " · " + chosen.title : ""),
+          "aria-haspopup": "dialog", "aria-expanded": open,
+          onClick: () => { setQuery(""); setUrl(""); setTitle(""); setOpen(true); void request(); } },
+          h("svg", { viewBox: "0 0 24 24", width: 17, height: 17, fill: "none", stroke: "currentColor",
+            strokeWidth: 1.6, strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": true },
+            h("path", { d: "M20 11a7 7 0 0 1-7 7H8l-5 3 1.4-5A7 7 0 0 1 10 4h3a7 7 0 0 1 7 7Z" }),
+            h("path", { d: "M8 9h7M8 12.5h4" })), h("span", null, chosen ? chosen.title : "Muse")),
+        open && require("react-dom").createPortal(h("dialog", { ref: dialog, className: "muse-thread-menu",
+          "aria-label": label, onCancel: () => setOpen(false), onClick: event => {
+            if (event.target !== dialog.current) return;
+            const r = dialog.current.getBoundingClientRect();
+            if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) setOpen(false);
+          } },
+          h("header", null, h("strong", null, label), h("button", { type: "button", onClick: () => setOpen(false),
+            "aria-label": tr("关闭", "Close") }, "×")),
+          h("input", { type: "search", autoFocus: true, placeholder: tr("搜索标题或账号", "Search title or account"),
+            "aria-label": tr("搜索对话", "Search conversations"), value: query, onChange: e => setQuery(e.target.value) }),
+          choice(null, tr("自动选择", "Automatic"), tr("新作品开新对话，续改沿用原作品", "New work starts fresh. Edits follow their source.")),
+          threads.map(row => choice(row.key, row.title, accountLabel(row.accountId) + " · " + relativeTime(row.updatedAt, locale))),
+          !threads.length && h("p", null, busy ? tr("正在读取…", "Loading…") : tr("没有匹配的对话", "No matching conversations")),
+          h("details", null, h("summary", null, tr("通过 Muse 对话链接添加", "Add a Muse conversation link")),
+            h("form", { onSubmit: event => { event.preventDefault(); void request("import-thread", { url: url.trim(), title: title.trim(), accountId: account }); } },
+              h("select", { value: account, onChange: e => setAccount(e.target.value), "aria-label": tr("原对话的账号", "Original account") },
+                accounts.map(a => h("option", { key: a.id, value: a.id }, a.label))),
+              h("input", { type: "url", required: true, value: url, placeholder: "https://muse.ai/thread/…",
+                "aria-label": tr("Muse 对话链接", "Muse conversation URL"), onChange: e => setUrl(e.target.value) }),
+              h("input", { value: title, maxLength: 96, placeholder: tr("对话名称（可选）", "Conversation name (optional)"),
+                "aria-label": tr("对话名称", "Conversation name"), onChange: e => setTitle(e.target.value) }),
+              h("button", { disabled: busy || !account || !url.trim() }, tr("添加并切换", "Add and select")))),
+          error && h("p", { role: "alert" }, error)), document.body));
+    }
+
     /* ---------------- settings card ---------------- */
 
     /**
@@ -996,8 +1106,8 @@ window.__ModuleLoader__.load({
                 "aria-expanded": open, "aria-label": summaryLabel + " · " + title, title: summaryLabel,
                 onClick: () => { setFailed(false); setOpen(!open); } }, ...summary)
             : h("div", { className: "muse-record-summary" }, ...summary),
-          h("span", { className: "muse-state", "data-tone": task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
-            t("settings." + (states[task.state] || "stateUnknown")))),
+          h("span", { className: "muse-state", "data-tone": task.previewOnly ? "warn" : task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
+            task.previewOnly ? (String(locale).startsWith("zh") ? "仅预览" : "Preview only") : t("settings." + (states[task.state] || "stateUnknown")))),
         task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
         open && details.length > 0 && h("dl", { className: "muse-record-facts" },
           details.map(([label, value]) => h(React.Fragment, { key: label }, h("dt", null, label), h("dd", null, value)))),
@@ -1667,6 +1777,9 @@ window.__ModuleLoader__.load({
      */
     function apply(ctx) {
       const Pill = (props) => h(MuseQuotaPill, { ...props, ctx });
+      const Picker = props => props.sessionId ? h(ThreadPicker, { key: props.sessionId, sessionId: props.sessionId, ctx }) : null;
+      ctx.slots.inject("conversation.input.right", () =>
+        ctx.slots.register({ name: "conversation.input.right", id: "dsh-muse-thread-picker", order: 20 }, Picker));
       const Card = (props) => h(MuseSettingsCard, { ...props, ctx });
 
       ctx.slots.inject("conversation.composer.dock", () =>

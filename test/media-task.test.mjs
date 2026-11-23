@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { Readable } from "node:stream";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { setImmediate as nextTurn } from "node:timers/promises";
@@ -40,14 +41,18 @@ function fixture(t, config = {}, accounts = [{ id: "acc-01", label: "Studio", st
   });
   const registry = new Map();
   const cleanups = [];
+  const routes = new Map();
   const services = {
+    connection: { requestRejection: () => undefined },
+    webServer: { register(def) { routes.set(def.path, def.handler); } },
     tools: { register(def) { registry.set(def.name, def); } },
     attachments: { imageLimits: { mediaTypes: ["image/png"] }, saveImage: async () => ({ attachmentId: "fixture" }) },
   };
-  apply({
-    get: (name) => services[name], inject() {},
+  const ctx = {
+    get: (name) => services[name], inject(names, bind) { if (names.every(name => services[name])) bind(ctx); },
     effect(fn) { const cleanup = fn(); if (typeof cleanup === "function") cleanups.push(cleanup); },
-  }, { homeDir: home, autoRefreshQuotaSeconds: 0, ...config });
+  };
+  apply(ctx, { homeDir: home, autoRefreshQuotaSeconds: 0, ...config });
   t.after(async () => {
     await nextTurn();
     for (const cleanup of cleanups.reverse()) await cleanup();
@@ -55,6 +60,14 @@ function fixture(t, config = {}, accounts = [{ id: "acc-01", label: "Studio", st
   });
   return {
     state, root, page, registry,
+    async picker(sessionId, action, more = {}) {
+      const req = Readable.from([Buffer.from(JSON.stringify({ action, sessionId, ...more }))]);
+      Object.assign(req, { method: "POST", headers: { host: "localhost" },
+        socket: { localAddress: "127.0.0.1", remoteAddress: "127.0.0.1" } });
+      let response;
+      await routes.get("/plugins/dsh-muse-media/accounts/action")(req, { setHeader() {}, end(data) { response = JSON.parse(data); } });
+      return response;
+    },
     draw: (prompt = "test") => registry.get("muse_draw_image").execute({ prompt }),
     video: () => registry.get("muse_draw_video").execute({ prompt: "test" }),
     quota: () => registry.get("muse_quota").execute({}),
@@ -159,6 +172,43 @@ test("a revision on a signed-out account never tries the second account", async 
   await assert.rejects(f.registry.get("muse_draw_image").execute({ prompt: "改蓝", continueFromTaskId: first.taskId }));
   assert.ok(accounts.length > 0 && accounts.every(id => id === first.account));
   assert.equal(f.state.sends, 1);
+});
+
+test("pinned web threads apply to both media tools in just their DSH session", async (t) => {
+  const f = fixture(t);
+  const url = "https://muse.ai/thread/manual-history";
+  const ctx = id => ({ agent: { session: { id } } });
+  const opens = [], sends = [];
+  f.page("openSelectedThread", async url => { opens.push(url); return 7; });
+  f.page("sendOnce", async opts => { sends.push(opts); return { fired: true }; });
+  f.page("waitMedia", async (_baseline, { kind, revision }) => ({
+    ...image, kind, mime: kind === "video" ? "video/mp4" : image.mime,
+    threadUrl: revision?.threadUrl ?? "https://muse.ai/thread/fresh", turn: revision ? 8 : 1,
+  }));
+  const bad = await f.picker("A", "import-thread", { accountId: "acc-01", url: "https://example.org/thread/id" });
+  assert.equal(bad.ok, false);
+  const pin = await f.picker("A", "import-thread", { accountId: "acc-01", title: "卡带", url });
+  assert.equal(pin.threads[0].title, "卡带");
+  assert.equal((await f.picker("B", "list-threads")).selected, null);
+  for (const kind of ["image", "video"]) await f.registry.get("muse_draw_" + kind).execute({ prompt: "续改" }, ctx("A"));
+  await f.registry.get("muse_draw_image").execute({ prompt: "新任务" }, ctx("B"));
+  assert.equal((await f.picker("A", "select-thread", { key: null })).selected, null);
+  await f.registry.get("muse_draw_image").execute({ prompt: "新任务" }, ctx("A"));
+  assert.deepEqual(opens, [url, url]);
+  assert.deepEqual(sends.map(s => s.revision?.turn), [7, 7, undefined, undefined]);
+  assert.equal(sends.length, 4);
+});
+
+test("preview status survives the tool renderer and task journal", async (t) => {
+  const f = fixture(t);
+  const url = "https://muse.ai/thread/preview-only";
+  f.page("waitMedia", async () => ({ ...image, previewOnly: true, threadUrl: url, turn: 1, width: 498, height: 498 }));
+  const tool = f.registry.get("muse_draw_image");
+  const result = await tool.execute({ prompt: "茶杯" });
+  assert.equal(result.previewOnly, true);
+  assert.equal(result.threadUrl, url);
+  assert.equal(f.tasks()[0].previewOnly, true);
+  assert.match(tool.output.render({}, result)[0].text, /仅取到预览.*\/thread\/preview-only/);
 });
 
 const sourceBrief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
