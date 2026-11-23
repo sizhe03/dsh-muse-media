@@ -28,6 +28,12 @@ The **Muse** button beside the composer pins a Muse conversation for the current
 
 If only a preview can be retrieved, the image result and History identify it as a preview. Open the original Muse thread to download the image without generating it again.
 
+### Side-chat memory rule
+
+Accounts shows the full rule and lets you enable a one-time request in a newly signed-in account’s main Muse chat. It asks Muse to keep different side chats independent while allowing edits in the same chat. Image and video generation no longer prepend an instruction. Existing accounts require a manual action. A previously disabled independence setting carries over as disabled.
+
+Each account shows the last set or removal attempt, its time, Muse’s actual reply and the previous confirmed state when relevant. An uncertain send is never retried automatically. Removal refers only to `DSH-Muse-旁聊独立-v1` by name and asks Muse not to repeat its contents. Other rules and the main-chat history remain. Disabling automatic setup only affects future accounts.
+
 ## Requirements
 
 1. **Chrome, Chromium, or Edge.** No browser is bundled.

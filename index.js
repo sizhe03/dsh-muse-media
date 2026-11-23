@@ -40,6 +40,7 @@ import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
+import { MAIN_CHAT, RULE_NAME, RULE_TEXT, ruleMessage, readRuleReply } from "./lib/memory-rule.js";
 import { AccountStore, TaskStore, ThreadLibrary, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
@@ -130,27 +131,11 @@ const DEFAULTS = {
   probeTimeoutSeconds: 60,
   showQuotaInComposer: true,
   debugPortBase: 19_220,
-  /**
-   * Whether each generation asks Muse to ignore its accumulated memory.
-   *
-   * Muse remembers the account, not just the current thread: a new thread does not clear what it learned from
-   * earlier work, so later generations drift toward whatever it saw before. This flag turns a fixed instruction on
-   * or off. It is a request, not a guarantee — the wording is what decides — so the text lives next to it and is
-   * changed in code, not typed by the user.
-   */
-  independentGeneration: true,
+  autoSetMemoryRule: true,
 };
 
-/**
- * Sent ahead of every generation when `independentGeneration` is on.
- *
- * Kept as a constant because it is an instruction to the model, not a preference: the user decides **whether** to
- * send it, and the wording is maintained here where it can be adjusted once for everyone.
- *
- * It names what must survive — this task's description and its uploaded references — because a plain "ignore
- * history" risks throwing away the reference image and the video's first frame along with the drift.
- */
-const INDEPENDENT_HINT =
+// Match old task transcripts when reopening a pre-migration generation. Never sent.
+const LEGACY_INDEPENDENT_HINT =
   "请独立完成本次生成，以本条描述和本次上传的参考素材为准。除非本条明确要求延续，否则不要沿用以往对话或作品中的角色、场景、构图和风格。";
 
 function asRecord(value) {
@@ -471,7 +456,7 @@ class MuseRuntime {
    */
   #clampSetting(key, raw) {
     const RULES = {
-      independentGeneration: (value) => (typeof value === "boolean" ? value : undefined),
+      autoSetMemoryRule: (value) => (typeof value === "boolean" ? value : undefined),
       headlessAfterLogin: (value) => (typeof value === "boolean" ? value : undefined),
       showQuotaInComposer: (value) => (typeof value === "boolean" ? value : undefined),
       idleReapSeconds: (value) => clampInt(value, 0, 86_400, 0),
@@ -532,6 +517,8 @@ class MuseRuntime {
     for (const key of Object.keys(DEFAULTS)) {
       if (typeof DEFAULTS[key] === "number" && !Number.isFinite(merged[key])) merged[key] = DEFAULTS[key];
     }
+    merged.autoSetMemoryRule = typeof config.autoSetMemoryRule === "boolean"
+      ? config.autoSetMemoryRule : config.independentGeneration !== false;
     return merged;
   }
 
@@ -807,6 +794,7 @@ class MuseRuntime {
         verifiedAt: Date.now(),
       };
       this.#accounts.update(accountId, patch);
+      await this.#firstLoginRule(accountId);
       return { ok: true, verdict: "signed-in", launched: !wasRunning };
     }
     if (outcome.verdict === "signed-out") {
@@ -1653,7 +1641,7 @@ class MuseRuntime {
         // The composer must start clean: a leftover attachment from an earlier
         // task would ride along with this prompt.
         if (parent?.selected) revision.turn = await page.openSelectedThread(revision.threadUrl);
-        else if (revision) await page.openRevision(revision, [parent.prompt, `${INDEPENDENT_HINT}\n\n${parent.prompt}`]);
+        else if (revision) await page.openRevision(revision, [parent.prompt, `${LEGACY_INDEPENDENT_HINT}\n\n${parent.prompt}`]);
         await page.clearComposer({ fresh: !revision });
 
         let upload = { attached: 0 };
@@ -1662,13 +1650,7 @@ class MuseRuntime {
         }
 
         const baseline = await page.snapshot();
-        /**
-         * The independence hint rides in front of the task's own words when the switch is on.
-         *
-         * A blank line separates the instruction from the description so Muse reads them as instruction and content
-         * rather than one run-on sentence.
-         */
-        const outgoing = revision || config.independentGeneration === false ? prompt : `${INDEPENDENT_HINT}\n\n${prompt}`;
+        const outgoing = prompt;
         const promptResult = await page.setPrompt(outgoing);
         if (promptResult.length === 0) {
           throw new MuseFailure("提示词没有进入输入框，已停止（没有提交）。", {
@@ -2484,6 +2466,7 @@ class MuseRuntime {
       /* housekeeping must not break the snapshot */
     }
     return {
+      memoryRule: { name: RULE_NAME, text: RULE_TEXT },
       accounts: accounts.map((account) => {
         const verdict = eligibility(account);
         const cached = this.#quotaCache.get(account.id);
@@ -2586,7 +2569,7 @@ class MuseRuntime {
         videoTimeoutSeconds: config.videoTimeoutSeconds,
         maxAccountsPerTask: config.maxAccountsPerTask,
         showQuotaInComposer: config.showQuotaInComposer !== false,
-        independentGeneration: config.independentGeneration !== false,
+        autoSetMemoryRule: config.autoSetMemoryRule === true,
       },
       /** What the settings page cannot derive from the snapshot's other fields. */
       diagnostics: {
@@ -2611,6 +2594,79 @@ class MuseRuntime {
       mediaDir: this.mediaDir(),
       paths: { root: this.#paths.root, profiles: this.#paths.profiles },
     };
+  }
+
+  // Called inside the page queue after the first verified sign-in. Existing rows
+  // have no eligibility marker; a later verification cannot enroll them.
+  async #firstLoginRule(accountId) {
+    if (!this.#accounts.get(accountId)?.autoRuleEligible) return;
+    if (!this.settings().autoSetMemoryRule) {
+      this.#accounts.update(accountId, { autoRuleEligible: false });
+      return;
+    }
+    await this.#applyMemoryRule(accountId, "set", true);
+  }
+
+  #manualRules = new Set();
+
+  async changeMemoryRule(accountId, action) {
+    if (this.#manualRules.has(accountId) || this.busy) throw new Error("页面正被占用，请稍后再操作。");
+    this.#manualRules.add(accountId);
+    try {
+      await this.runExclusive("Muse 旁聊规则", () => this.#applyMemoryRule(accountId, action, false), { accountId });
+      const receipt = this.#accounts.get(accountId).memoryRule.latest;
+      return { ok: true, receipt, snapshot: this.snapshot() };
+    } finally { this.#manualRules.delete(accountId); }
+  }
+
+  async #applyMemoryRule(accountId, action, automatic) {
+    const account = this.#accounts.get(accountId);
+    if (!account) throw new Error("找不到这个账号。");
+    const prompt = ruleMessage(action);
+    const lastConfirmed = account.memoryRule?.lastConfirmed;
+    const previouslyPossible = account.memoryRule?.possiblyPresent === true;
+    const record = { action, at: Date.now(), automatic, outcome: "not-sent", reply: "" };
+    const save = () => {
+      const confirmed = ["set", "removed", "absent"].includes(record.outcome);
+      this.#accounts.update(accountId, { autoRuleEligible: false, memoryRule: {
+        name: RULE_NAME, latest: { ...record }, lastConfirmed: confirmed ? { ...record } : lastConfirmed,
+        possiblyPresent: confirmed ? record.outcome === "set" : previouslyPossible || (action === "set" && record.outcome === "unconfirmed"),
+      } });
+    };
+    save();
+    try {
+      await this.#browser.withPage(accountId, { url: MAIN_CHAT, visible: !this.settings().headlessAfterLogin,
+        reuseOnly: automatic }, async raw => {
+        const page = new MusePage(raw, this.#log);
+        if ((await page.snapshot()).href !== MAIN_CHAT) await page.openThread({ url: MAIN_CHAT });
+        else if (await page.waitReady() !== "ready") throw new Error("Muse 主聊天尚未就绪。");
+        const baseline = await page.snapshot();
+        if (baseline.href !== MAIN_CHAT || (await page.checkSession()).verdict !== "signed-in") throw new Error("无法确认已登录的 Muse 主聊天。");
+        const previousAction = account.memoryRule?.latest?.action;
+        const ownDraft = ["set", "remove"].includes(previousAction) &&
+          baseline.composer.text === ruleMessage(previousAction);
+        if (baseline.stop || (baseline.composer.text && !ownDraft) || baseline.composer.attachments) {
+          throw new Error("主聊天正在回复或有未发送的草稿。");
+        }
+        if (automatic && !this.settings().autoSetMemoryRule) return;
+        await page.setPrompt(prompt);
+        // Persist uncertainty before crossing the one-send boundary, including across a crash.
+        record.outcome = "unconfirmed";
+        save();
+        const send = await page.sendOnce({ expectedPrompt: prompt, revision: {
+          threadUrl: MAIN_CHAT.slice(0, -1), turn: baseline.users.length,
+        } });
+        if (!send.fired) {
+          record.outcome = "not-sent";
+          record.detail = send.reason;
+        } else {
+          Object.assign(record, await readRuleReply(page, baseline, prompt, action, Date.now() + 60_000));
+        }
+      });
+    } catch (error) {
+      record.detail = error instanceof Error ? error.message : String(error);
+    }
+    save();
   }
 
   addAccount(label) {
@@ -2719,6 +2775,9 @@ class MuseRuntime {
           verifiedAt: Date.now(),
         });
         const cleared = await this.#clearCooldownOnPanelEvidence(accountId);
+        if (this.#accounts.get(accountId)?.autoRuleEligible) {
+          await this.runExclusive("新账号旁聊规则", () => this.#firstLoginRule(accountId), { accountId });
+        }
         return {
           ok: true,
           verdict: "signed-in",
@@ -3773,6 +3832,9 @@ export function apply(ctx, config) {
                   );
                   return json(res, 200, { ...verified, snapshot: runtime.snapshot() });
                 }
+                case "set-memory-rule":
+                case "remove-memory-rule":
+                  return json(res, 200, await runtime.changeMemoryRule(accountId, action === "set-memory-rule" ? "set" : "remove"));
                 case "probe": {
                   if (runtime.busy !== undefined) {
                     throw new MuseFailure("页面正被一个任务占用，请等它结束。", {

@@ -173,9 +173,6 @@ window.__ModuleLoader__.load({
       "settings.openBrowser": "打开浏览器",
       "settings.opening": "正在打开…",
       "settings.openMediaDir": "打开媒体文件夹",
-      "settings.fieldIndependent": "提示 Muse 独立生成",
-      "settings.fieldIndependentHint":
-        "生成新作品时，请 Muse 只参考本次输入。续改沿用原对话。Muse 的长期记忆仍然开启。",
       "settings.fieldPill": "在输入框显示额度",
       "settings.fieldPillHint": "在对话输入框旁边显示本周已用百分比。",
       "settings.fieldIdle": "空闲回收（秒）",
@@ -336,9 +333,6 @@ window.__ModuleLoader__.load({
       "settings.openBrowser": "Open browser",
       "settings.opening": "Opening…",
       "settings.openMediaDir": "Open the media folder",
-      "settings.fieldIndependent": "Ask Muse to generate new works independently",
-      "settings.fieldIndependentHint":
-        "For new work, ask Muse to use only this prompt and its attachments. Revisions use the original thread. Muse’s long-term memory stays on.",
       "settings.fieldPill": "Show usage beside the composer",
       "settings.fieldPillHint": "Display the weekly percentage next to the message box.",
       "settings.fieldIdle": "Reap an idle browser after (s)",
@@ -956,12 +950,47 @@ window.__ModuleLoader__.load({
      *   - the actions split into the one that matters (sign in / verify, depending
      *     on state) and a "more" disclosure for maintenance and deletion.
      */
+    function ruleStatus(receipt, zh) {
+      if (!receipt) return zh ? "无设置记录" : "No recorded operation";
+      const set = receipt.action === "set";
+      const op = set ? (zh ? "设置" : "Set") : (zh ? "移除" : "Remove");
+      const labels = {
+        set: zh ? "Muse 已确认设置" : "Muse confirmed saving",
+        removed: zh ? "Muse 已确认移除" : "Muse confirmed removal",
+        absent: zh ? "Muse 表示未找到此规则" : "Muse reported rule not found",
+        refused: zh ? "Muse 表示无法保存" : "Muse reported it could not save",
+        "not-sent": zh ? op + "未发送" : op + " request not sent",
+        unconfirmed: zh ? op + "待确认" : op + " unconfirmed",
+      };
+      return labels[receipt.outcome] || op;
+    }
+
+    function RuleSettings({ snapshot, locale, pending, save }) {
+      const zh = String(locale).toLowerCase().startsWith("zh");
+      return h("section", { className: "muse-foot" },
+        h("label", { className: "muse-foot-row" },
+          h("strong", null, zh ? "为新账号自动设置旁聊独立规则（推荐）" : "Automatically set the side-chat rule for new accounts (recommended)"),
+          h("input", { type: "checkbox", checked: snapshot.settings.autoSetMemoryRule === true,
+            disabled: pending !== undefined, onChange: e => save(e.target.checked) })),
+        h("p", { className: "muse-meta" }, zh
+          ? "首次登录时向该账号的 Muse 主聊天发送一次，有助于减少旧作品干扰新创作。同一旁聊仍可续改。关闭只影响后续新账号。"
+          : "Send once in a new account’s main Muse chat to reduce carryover between works. Edits can still follow earlier turns in the same chat. Turning this off affects future accounts."),
+        h("details", null, h("summary", null, zh ? "查看将写入的完整规则" : "View the complete rule"),
+          h("p", null, snapshot.memoryRule.name), h("p", null, snapshot.memoryRule.text),
+          h("p", { className: "muse-meta" }, zh ? "移除时只引用规则名称，要求 Muse 不复述内容。主聊天中的历史消息会保留。"
+            : "Removal identifies the rule by name and asks Muse not to repeat it. Existing chat messages remain.")));
+    }
+
     function AccountRow({ account, t, locale, busy, pending, onAction }) {
       const [confirming, setConfirming] = useState(false);
       const statusText = t(`settings.status.${account.status}`);
       const statusTone =
         account.status === "ready" && account.usable ? "ok" : account.status === "needs-login" ? "bad" : "warn";
 
+      const zh = String(locale).toLowerCase().startsWith("zh");
+      const latest = account.memoryRule?.latest;
+      const confirmed = account.memoryRule?.lastConfirmed;
+      const canRemove = account.memoryRule?.possiblyPresent;
       const probe = account.probe;
       const probeNode =
         probe !== undefined && probe.checkedAt !== undefined
@@ -1052,7 +1081,8 @@ window.__ModuleLoader__.load({
           quota?.plan && h("span", null, quota.plan),
           quota?.reset && h("span", null, t("settings.quotaReset") + " " + quota.reset),
           account.running && h("span", null, t("settings.running")),
-          probe?.checkedAt && probeNode),
+          probe?.checkedAt && probeNode,
+          h("span", null, (zh ? "旁聊规则 · " : "Side-chat rule · ") + ruleStatus(latest, zh))),
         quota?.error && h("p", { className: "muse-warning" }, quota.error),
         expanded && h("div", { id: detailsId, className: "muse-account-details" },
           h("div", { className: "muse-account-meta" },
@@ -1060,6 +1090,19 @@ window.__ModuleLoader__.load({
             quota?.at && h("span", null, t("settings.updated") + " " + relativeTime(quota.at, locale)),
             !probe?.checkedAt && probeNode),
           probe?.note && h("p", { className: "muse-meta" }, probe.note),
+          h("div", { className: "muse-card-actions" },
+            latest?.outcome !== "set" && button("set-memory-rule", latest ? (zh ? "重新设置规则" : "Set rule again") : (zh ? "设置规则" : "Set rule")),
+            (canRemove || latest?.action === "remove" && latest.outcome === "unconfirmed") &&
+              button("remove-memory-rule", zh ? "移除此规则" : "Remove this rule")),
+          latest && h("details", { className: "muse-rule-receipt" },
+            h("summary", null, (zh ? "查看回执 · " : "View receipt · ") + new Date(latest.at).toLocaleString(locale)),
+            h("p", null, ruleStatus(latest, zh)),
+            h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, latest.reply ||
+              (zh ? "未收到可确认的回复。" : "No attributable reply received.")),
+            latest.detail && h("p", { className: "muse-meta" }, latest.detail),
+            confirmed && confirmed.at !== latest.at && h("div", { className: "muse-meta" },
+              (zh ? "上次明确回执 · " : "Last confirmed status · ") + new Date(confirmed.at).toLocaleString(locale) +
+              " · " + ruleStatus(confirmed, zh), h("p", null, confirmed.reply))),
           h("div", { className: "muse-card-actions" },
             button("open-browser", t("settings.openBrowser")), !needsSignIn && button("verify", t("settings.verify")),
             button("probe", t("settings.test")), !account.selected && button("select", t("settings.select")),
@@ -1235,7 +1278,6 @@ window.__ModuleLoader__.load({
       },
         h("h4", null, t("settings.generationSettings")),
         h("fieldset", { className: "muse-fields", disabled: saving, "aria-label": t("settings.generationSettings") },
-          toggle("independentGeneration", t("settings.fieldIndependent"), t("settings.fieldIndependentHint")),
           toggle("showQuotaInComposer", t("settings.fieldPill"), t("settings.fieldPillHint"))),
         h("details", { className: "muse-fold" },
           h("summary", null, t("settings.execution")),
@@ -1555,6 +1597,10 @@ window.__ModuleLoader__.load({
               }
             } else if (result !== undefined && result.ok === false) {
               setNotice({ kind: "error", text: result.error ?? t("settings.actionFailed") });
+            } else if (result?.receipt) {
+              const r = result.receipt;
+              setNotice({ kind: ["set", "removed", "absent"].includes(r.outcome) ? "ok" : "warn",
+                text: ruleStatus(r, String(locale).toLowerCase().startsWith("zh")) });
             } else if (action === "probe" && result !== undefined) {
               setNotice({
                 kind: result.ok === true ? (result.formatMismatch ? "warn" : "ok") : "error",
@@ -1585,7 +1631,7 @@ window.__ModuleLoader__.load({
             setPending(undefined);
           }
         },
-        [load, t],
+        [load, t, locale],
       );
 
       const busy = snapshot !== undefined && snapshot.busy !== undefined && snapshot.busy !== null;
@@ -1737,6 +1783,8 @@ window.__ModuleLoader__.load({
                       ),
                     )
                   : null,
+                snapshot?.memoryRule && h(RuleSettings, { snapshot, locale, pending,
+                  save: enabled => void runAction("save-settings", undefined, { settings: { autoSetMemoryRule: enabled } }) }),
                 snapshot === undefined
                 ? h("p", null, "\u2026")
                 : accounts.length === 0

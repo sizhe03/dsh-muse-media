@@ -42,7 +42,10 @@ function fixture(t, config = {}, accounts = [{ id: "acc-01", label: "Studio", st
   const registry = new Map();
   const cleanups = [];
   const routes = new Map();
+  const settingsEntry = { options: { name: "dsh-muse-media" } };
+  const configValues = { homeDir: home, autoRefreshQuotaSeconds: 0, ...config };
   const services = {
+    configEditor: { entries: () => [settingsEntry], edit(_entry, cb) { Object.assign(configValues, cb(configValues)); } },
     connection: { requestRejection: () => undefined },
     webServer: { register(def) { routes.set(def.path, def.handler); } },
     tools: { register(def) { registry.set(def.name, def); } },
@@ -52,7 +55,7 @@ function fixture(t, config = {}, accounts = [{ id: "acc-01", label: "Studio", st
     get: (name) => services[name], inject(names, bind) { if (names.every(name => services[name])) bind(ctx); },
     effect(fn) { const cleanup = fn(); if (typeof cleanup === "function") cleanups.push(cleanup); },
   };
-  apply(ctx, { homeDir: home, autoRefreshQuotaSeconds: 0, ...config });
+  apply(ctx, configValues);
   t.after(async () => {
     await nextTurn();
     for (const cleanup of cleanups.reverse()) await cleanup();
@@ -87,8 +90,7 @@ for (const enabled of [false, true]) {
     f.page("waitMedia", async () => image);
     await f.draw(brief);
     assert.equal(f.tasks()[0].prompt, brief);
-    if (enabled) assert.ok(written.startsWith("请独立") && written.endsWith("\n\n" + brief));
-    else assert.equal(written, brief);
+    assert.equal(written, brief);
     assert.equal(expected, written);
   });
 }
@@ -121,9 +123,9 @@ for (const kind of ["image", "video"]) {
     await tool.execute({ prompt: "全新的项目" });
     assert.deepEqual(resets, [true, false, false, true]);
     assert.deepEqual(opens, [1, 2].map(turn => ({ threadUrl: "https://muse.ai/thread/work-1", turn })));
-    assert.match(sends[0], /^请独立/);
+    assert.equal(sends[0], "画一枚卡带");
     assert.deepEqual(sends.slice(1, 3), ["背景改蓝", "再暗一点"]);
-    assert.match(sends[3], /^请独立/);
+    assert.equal(sends[3], "全新的项目");
     const saved = f.tasks().find(row => row.id === final.taskId);
     assert.equal(saved.parentTaskId, edit.taskId);
     assert.equal(saved.threadUrl, opens[0].threadUrl);
@@ -225,6 +227,96 @@ test("locating a removed file reports the missing task output without accepting 
   const unknown = await f.picker("A", "reveal-task-file", { taskId: "missing", path: f.root });
   assert.equal(unknown.ok, false);
   assert.match(unknown.error, /没有已保存/);
+});
+
+function simulateMainChat(f) {
+  const state = { users: [], agents: [], writes: [], prompt: "", response: "已设置", href: "https://muse.ai/" };
+  f.page("openThread", async ({ url }) => { assert.equal(url, "https://muse.ai/"); state.href = url; });
+  f.page("snapshot", async () => ({ href: state.href, stop: false,
+    users: [...state.users], agents: [...state.agents], composer: { text: "", attachments: 0 } }));
+  f.page("setPrompt", async text => { state.prompt = text; return { length: text.length }; });
+  f.page("sendOnce", async ({ expectedPrompt, revision }) => {
+    assert.equal(expectedPrompt, state.prompt);
+    assert.deepEqual(revision, { threadUrl: "https://muse.ai", turn: state.users.length });
+    state.writes.push(state.prompt);
+    const index = state.users.length * 2;
+    state.users.push({ index, text: state.prompt });
+    state.agents.push({ index: index + 1, text: state.response });
+    if (state.loseReceipt) state.href = "https://muse.ai/thread/unrelated";
+    return { fired: true, unconfirmed: state.loseReceipt };
+  });
+  f.page("roundUserAttachments", async (prompt, latestOnly) =>
+    latestOnly && state.users.at(-1)?.text === prompt ? { count: 0 } : undefined);
+  return state;
+}
+
+test("new login writes one named rule; manual removal retains its own receipt and never re-enrolls", async t => {
+  const f = fixture(t);
+  const chat = simulateMainChat(f);
+  const added = await f.picker("", "add", { label: "fresh" });
+  const accountId = added.account.id;
+  const action = name => f.picker("", name, { accountId });
+  const row = result => result.snapshot.accounts.find(a => a.id === accountId).memoryRule;
+  const first = row(await action("verify"));
+  assert.equal(first.latest.outcome, "set");
+  assert.equal(first.latest.automatic, true);
+  assert.equal(first.latest.reply, "已设置");
+  assert.ok(chat.writes[0].includes(added.snapshot.memoryRule.text));
+  await action("verify");
+  assert.equal(chat.writes.length, 1);
+  chat.loseReceipt = true;
+  const uncertain = row(await action("remove-memory-rule"));
+  assert.equal(uncertain.latest.outcome, "unconfirmed");
+  assert.equal(uncertain.latest.reply, "");
+  assert.deepEqual(uncertain.lastConfirmed, first.latest);
+  assert.equal(uncertain.possiblyPresent, true);
+  assert.ok(chat.writes[1].includes("DSH-Muse-旁聊独立-v1"));
+  assert.ok(chat.writes[1].includes("不要引用、复述或概括规则内容"));
+  assert.ok(!chat.writes[1].includes(added.snapshot.memoryRule.text));
+  chat.loseReceipt = false; chat.response = "已移除";
+  const removed = row(await action("remove-memory-rule"));
+  assert.equal(removed.latest.outcome, "removed");
+  assert.equal(removed.possiblyPresent, false);
+  await action("verify");
+  assert.equal(chat.writes.length, 3);
+  chat.response = "已设置";
+  assert.equal(row(await action("set-memory-rule")).latest.outcome, "set");
+});
+
+test("existing accounts stay manual and old opt-out survives unless the new setting overrides it", async t => {
+  const f = fixture(t, { independentGeneration: false });
+  const chat = simulateMainChat(f);
+  const existing = await f.picker("", "verify", { accountId: "acc-01" });
+  assert.equal(existing.snapshot.settings.autoSetMemoryRule, false);
+  assert.equal(existing.snapshot.accounts[0].memoryRule, undefined);
+  await f.picker("", "add", { label: "fresh" });
+  await f.picker("", "verify", { accountId: "fresh" });
+  assert.equal(chat.writes.length, 0);
+  const saved = await f.picker("", "save-settings", { settings: { autoSetMemoryRule: true } });
+  assert.deepEqual(saved.changed, ["autoSetMemoryRule"]);
+  assert.equal(saved.snapshot.settings.autoSetMemoryRule, true);
+  await f.picker("", "verify", { accountId: "fresh" });
+  assert.equal(chat.writes.length, 0);
+  chat.response = "无法保存";
+  const manual = await f.picker("", "set-memory-rule", { accountId: "acc-01" });
+  assert.equal(manual.receipt.outcome, "refused");
+  assert.equal(manual.receipt.reply, "无法保存");
+});
+
+test("enabling the new switch never applies retroactively to existing accounts", async t => {
+  const f = fixture(t, { independentGeneration: false, autoSetMemoryRule: true });
+  const chat = simulateMainChat(f);
+  const verified = await f.picker("", "verify", { accountId: "acc-01" });
+  assert.equal(verified.snapshot.settings.autoSetMemoryRule, true);
+  assert.equal(chat.writes.length, 0);
+  chat.response = "未找到";
+  const removed = await f.picker("", "remove-memory-rule", { accountId: "acc-01" });
+  assert.equal(removed.receipt.outcome, "absent");
+  f.page("checkSession", async () => ({ verdict: "signed-out" }));
+  const blocked = await f.picker("", "set-memory-rule", { accountId: "acc-01" });
+  assert.equal(blocked.receipt.outcome, "not-sent");
+  assert.equal(blocked.snapshot.accounts[0].memoryRule.lastConfirmed.reply, "未找到");
+  assert.equal(chat.writes.length, 1);
 });
 
 const sourceBrief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
