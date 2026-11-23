@@ -2922,7 +2922,7 @@ const BRIEF_REFERENCE_FIELDS = {
   promptSource: {
     type: "object",
     description: "当前 DSH 会话中用户亲写的生成要求。用两个逐字摘录的短句圈定范围（含首尾），可引用上一轮或更早的用户消息。" +
-      "选择与生成有关的范围，保留开头的用途和末尾的交付规格。不要引用模型、工具输出或无关聊天。与 prompt 二选一。",
+      "选择与生成有关的范围，保留开头的用途和末尾的交付规格。范围须覆盖所在文本块至少一半的非空白字符。若完整生成要求只占一小段，改用 prompt 逐字传入。与 prompt 二选一。",
     properties: {
       start: { type: "string", description: "原文开头的连续字符，含原标点，不加省略号。" },
       end: { type: "string", description: "原文结尾的连续字符，含原标点，不加省略号。" },
@@ -2951,6 +2951,7 @@ function generationBrief(args, exec) {
   const session = exec?.agent?.session;
   if (typeof session?.deriveMessages !== "function") throw invalid("当前调用无法读取会话原文，请用 prompt 逐字传入完整要求。");
   let selected;
+  let sourceText;
   for (const message of session.deriveMessages()) {
     if (message.role !== "user" || message.source?.kind !== "user") continue;
     for (const block of message.content) {
@@ -2969,9 +2970,14 @@ function generationBrief(args, exec) {
         throw invalid("首尾短句对应多个原文范围，请选更具体的短句，或逐字传入完整 prompt。");
       }
       selected = text.slice(first, last + end.length);
+      sourceText = text;
     }
   }
   if (selected === undefined) throw invalid("未在当前会话的用户正文中找到这对首尾短句，请核对原文标点及范围。");
+  const contentLength = (text) => Array.from(text.replace(/\s/gu, "")).length;
+  if (contentLength(selected) * 2 < contentLength(sourceText)) {
+    throw invalid("引用范围过小：首尾短句须覆盖原文文本块至少一半的非空白字符。请核对用途和末尾规格；若只需其中一小段，直接用 prompt 逐字传入所需内容。");
+  }
   return args.promptAmendment?.trim() ? selected + "\n\n" + args.promptAmendment : selected;
 }
 

@@ -105,6 +105,38 @@ for (const kind of ["image", "video"]) {
   });
 }
 
+test("a fragment of the cartridge brief is rejected before image or video submission", async (t) => {
+  const f = fixture(t);
+  const original = "为 Telegram 频道生成一张动态头像的静态首帧。输出 4096 × 4096，PNG，sRGB。" +
+    "完整方图，中央圆形裁切。烟紫色半透明游戏卡带，清楚拍到宽肩、顶端薄边和底部短触点。";
+  const args = { promptSource: { start: "生成一张", end: "静态首帧" }, promptAmendment: "保留铜箔纹理。".repeat(12) };
+  f.page("setPrompt", async () => assert.fail("fragment reached the composer"));
+  for (const kind of ["image", "video"]) {
+    await assert.rejects(f.registry.get("muse_draw_" + kind).execute(args, callContext(human(original))),
+      { code: "INVALID_ARGS", message: /范围过小/ });
+  }
+  assert.equal(f.tasks().length, 0);
+  assert.equal(f.state.sends, 0);
+});
+
+test("brief coverage counts non-whitespace code points and accepts exactly half or a short whole brief", async (t) => {
+  const f = fixture(t, { independentGeneration: false });
+  let written;
+  f.page("setPrompt", async (text) => {
+    written = text;
+    throw new Error("offline stop before submission");
+  });
+  const draw = (text, start, end) => f.registry.get("muse_draw_image").execute(
+    { promptSource: { start, end } }, callContext(human(text)));
+  const selected = "画\n   🎮";
+  await assert.rejects(draw(selected + "。其他", "画", "🎮"), { code: "INVALID_ARGS" });
+  assert.equal(f.tasks().length, 0);
+  await assert.rejects(draw(selected + "其他", "画", "🎮"));
+  assert.equal(written, selected);
+  await assert.rejects(draw("画猫", "画", "猫"));
+  assert.equal(written, "画猫");
+});
+
 test("an invalid or ambiguous source never creates a task", async (t) => {
   const f = fixture(t);
   f.page("setPrompt", async () => assert.fail("invalid source reached the composer"));
