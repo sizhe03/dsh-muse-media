@@ -1,5 +1,10 @@
 # Muse 媒体 · DeepSeek Harness
 
+[![npm version](https://img.shields.io/npm/v/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
+[![npm downloads](https://img.shields.io/npm/dm/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
+[![license](https://img.shields.io/npm/l/dsh-muse-media.svg)](./LICENSE)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-2f6fed)](#安装与登录)
+
 用自己的 Muse 账号，在 DSH 对话里生成图片和视频。想改刚才的作品，直接说要改哪里；想找原文件，去生成记录里点一下就能定位。
 
 [English](README.en.md) · [安装与登录](#安装与登录) · [版本说明](https://github.com/sizhe03/dsh-muse-media/releases/latest) · [报告问题](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)

@@ -1,5 +1,10 @@
 # Muse Media for DeepSeek Harness
 
+[![npm version](https://img.shields.io/npm/v/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
+[![npm downloads](https://img.shields.io/npm/dm/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
+[![license](https://img.shields.io/npm/l/dsh-muse-media.svg)](./LICENSE)
+[![DeepSeek Harness](https://img.shields.io/badge/DeepSeek%20Harness-plugin-2f6fed)](#install-and-sign-in)
+
 Generate images and videos in a DSH conversation with your own Muse account. Ask for a change to revise the last result, or open its saved file directly from History.
 
 [中文](README.md) · [Install and sign in](#install-and-sign-in) · [Release notes](https://github.com/sizhe03/dsh-muse-media/releases/latest) · [Report an issue](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)
