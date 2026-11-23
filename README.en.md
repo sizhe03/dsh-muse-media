@@ -220,7 +220,7 @@ happens only on a machine without Chrome, and it says so.
 ## Development
 
 ```bash
-npm test        # 128 checks: manifest, index, encoding, theme tokens, CI structure, decision layer, page layer, refusal recognition
+npm test        # 178 checks: manifest, index, encoding, theme tokens, CI structure, decision layer, page layer, refusal recognition
 npm run check   # syntax plus the tests
 ```
 

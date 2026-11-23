@@ -206,7 +206,7 @@ cd dsh-muse-media
 ```
 
 ```bash
-npm test        # 128 项：清单、索引、编码、主题变量、CI 结构、决策层、页面层、拒绝识别
+npm test        # 178 项：清单、索引、编码、主题变量、CI 结构、决策层、页面层、拒绝识别
 npm run check   # 语法检查 + 测试
 ```
 
