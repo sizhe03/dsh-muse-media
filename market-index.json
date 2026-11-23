@@ -5,8 +5,8 @@
     "zh": "Muse 媒体"
   },
   "description": {
-    "en": "Image and video generation in DeepSeek Harness with your own Muse account, driven through your installed Chrome.",
-    "zh": "在 DeepSeek Harness 对话里用你自己的 Muse 账号生成图片和视频，通过本机 Chrome 驱动。"
+    "en": "Generate images and videos in DeepSeek Harness with your own Muse account.",
+    "zh": "在 DeepSeek Harness 里用自己的 Muse 账号生成图片和视频。"
   },
   "plugins": [
     {
@@ -16,11 +16,11 @@
         "zh": "Muse 媒体"
       },
       "description": {
-        "en": "Generate images and video with your own Muse account. Three tools, multiple accounts, weekly allowance beside the composer. No Python, no gateway, no second plugin.",
-        "zh": "用你自己的 Muse 账号生成图片和视频。三个工具、多账号支持、输入框旁显示周额度。不需要 Python、网关或第二个插件。"
+        "en": "Generate images and videos, revise them in the original Muse conversation, and open the saved file from History. Track weekly usage per account.",
+        "zh": "在对话里生成图片和视频，回到原对话接着修改，从生成记录一键定位文件。支持按账号查看周额度。"
       },
       "author": "sizhe03",
-      "homepage": "https://www.npmjs.com/package/dsh-muse-media",
+      "homepage": "https://github.com/sizhe03/dsh-muse-media#readme",
       "repository": {
         "type": "git",
         "url": "https://github.com/sizhe03/dsh-muse-media"
@@ -166,7 +166,8 @@
             "type": "npm"
           }
         }
-      ]
+      ],
+      "icon": "./assets/icon-180.png"
     }
   ]
 }

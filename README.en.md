@@ -1,38 +1,39 @@
-# dsh-muse-media
+# Muse Media for DeepSeek Harness
 
-[![npm version](https://img.shields.io/npm/v/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
-[![npm downloads](https://img.shields.io/npm/dm/dsh-muse-media.svg)](https://www.npmjs.com/package/dsh-muse-media)
-[![license](https://img.shields.io/npm/l/dsh-muse-media.svg)](./LICENSE)
+Generate images and videos in a DSH conversation with your own Muse account. Ask for a change to revise the last result, or open its saved file directly from History.
 
-Generate images and video in a DeepSeek Harness conversation with your own Muse account, and see this week's free allowance beside the composer.
+[中文](README.md) · [Install and sign in](#install-and-sign-in) · [Release notes](https://github.com/sizhe03/dsh-muse-media/releases/latest) · [Report an issue](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)
 
-The plugin **brings its own browser driver**: it operates the Chrome/Chromium/Edge already installed on your machine over the Chrome DevTools Protocol. No Python, no muse2api, no second plugin, and your everyday browser profile is left alone.
+![Two results from the same Muse thread: the original teal mug on the left and its deep red revision on the right](docs/muse-cover.png)
 
-![Three Muse accounts with their weekly allowance, the usage pill beside the composer, and a generated frame](docs/preview.svg)
+> “Change the glaze to deep red and keep everything else the same.” These are the two previews saved during that revision.
 
-> 中文说明见 [README.md](README.md)。
+## Install and sign in
 
-## Quick start
+1. Search for **Muse media** in the DSH plugin market. If it does not appear, add the [Muse market index](https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json) and refresh.
+2. Go to **Settings → Muse → New account → Open sign-in window**. Sign in to your Muse account in the browser window.
+3. Back in DSH, try “Use Muse to draw a teal ceramic mug on a white background.” Each generation uses that account’s Muse allowance. The plugin uses your installed Chrome, Chromium, or Edge.
+
+You can also install it with [npm](https://www.npmjs.com/package/dsh-muse-media).
 
 ```bash
 npm install dsh-muse-media
 ```
 
-Then in Harness: **Settings → Muse → New account → Open sign-in window**, and sign in to muse.ai once in the Chrome window that appears.
+## After generating
 
-After that, just ask in the conversation.
-
-To revise a result, ask “make the background of that image navy” or “slow down the last second of that video.” Both tools take the previous result’s `taskId` as `continueFromTaskId` and send the change in the original account and thread. For successive edits, use the latest version. New works start a fresh chat. For older records without a saved thread, continue in Muse directly or upload the old image as a reference.
-
-The **Muse** button beside the composer pins a Muse conversation for the current DSH chat. Both media tools continue its latest turn on the original account. Choose **Automatic** to restore the default. Search by title or account, or use **Add a Muse conversation link** for conversations created on the website or missing from older plugin records. Selecting a thread spends no quota.
-
-If only a preview can be retrieved, the image result and History identify it as a preview. Open the original Muse thread to download the image without generating it again.
+| What you want to do | How to do it |
+| --- | --- |
+| Revise the last image or video | Ask “make the glaze deep red” or “slow down the last second of the video.” Each edit continues from the latest version in the original Muse account and thread. |
+| Return to an older project | Select **Muse** beside the composer to find and pin a conversation, or add its Muse web link. The selection applies to the current DSH chat. Choose **Automatic** to return to the default. |
+| Find the saved image or video | Open **Settings → Muse → History** and choose **Show in folder**. Windows selects the file in Explorer. You can also download it directly. |
+| Retrieve an original when only a preview was saved | Open the original Muse conversation from the record to download the available image without spending another generation credit. For older records without a link, use the conversation history on Muse. |
 
 ### Side-chat memory rule
 
 Accounts shows the full rule and lets you enable a one-time request in a newly signed-in account’s main Muse chat. It asks Muse to keep different side chats independent while allowing edits in the same chat. Image and video generation no longer prepend an instruction. Existing accounts require a manual action. A previously disabled independence setting carries over as disabled.
 
-Each account shows the last set or removal attempt, its time, Muse’s actual reply and the previous confirmed state when relevant. An uncertain send is never retried automatically. Removal refers only to `DSH-Muse-旁聊独立-v1` by name and asks Muse not to repeat its contents. Other rules and the main-chat history remain. Disabling automatic setup only affects future accounts.
+Each account shows the last set or removal attempt, its time, Muse’s actual reply and the previous confirmed state when relevant. If a request is unconfirmed, select **Check chat receipt** to read the existing reply from the main chat. Removal refers only to `DSH-Muse-旁聊独立-v1` by name and asks Muse not to repeat its contents. Other rules and the main-chat history remain. Disabling automatic setup only affects future accounts.
 
 ## Requirements
 
@@ -59,6 +60,8 @@ Three panes, each answering one question:
 - **Settings** groups generation preferences, browser options, timeouts and local storage. Drafts survive tab switches. Select Save to apply them.
 
 The pill beside the composer shows `Muse · 25% weekly · acc-01`; hover it for the plan, reset date, reading time, and which account the figure belongs to.
+
+![Three Muse accounts with their weekly allowance, the usage pill beside the composer, and a generated frame](docs/preview.svg)
 
 ## How an account is chosen
 
@@ -111,7 +114,7 @@ Get-FileHash "<the path from step 2>" -Algorithm SHA256
 |---|---|---|
 | The file appears in no task record | The plugin did not produce it | Check your own pipeline for another step |
 | Recorded, correct size | The plugin delivered correctly | The problem is downstream (playback, transcoding) |
-| Recorded, **smaller than expected** | Capture-layer bug | Known before 1.1.0; upgrade and regenerate |
+| Recorded, **smaller than expected** | A preview may have been saved | Check for the original in the corresponding Muse thread |
 | Recorded, fingerprints differ | The file was replaced | Check intermediate steps |
 
 **Note the third row**: in that case **the fingerprints match** — the plugin stored exactly what it fetched. So a fingerprint
@@ -119,9 +122,7 @@ comparison cannot detect this class of bug; **the size must be measured.**
 
 ### Known issue
 
-**Before 1.1.0**, every image was 498×498 — about a third of the length Muse shows.
-Fixed in 1.2.0 by waiting for the attachment's size to settle. Historical files need regenerating, or download the originals
-from the corresponding Muse chat — downloading by hand costs no allowance.
+Earlier releases sometimes saved a 498 × 498 preview. Since v1.3.0 the plugin reloads the thread when it finds a likely preview and checks the downloaded image dimensions. For a previously saved preview, look for the original in the corresponding Muse thread.
 
 **The plugin does not transcode.** It writes the bytes Muse returned, unchanged: no ffmpeg, no resizing, no re-encoding.
 
@@ -129,7 +130,7 @@ from the corresponding Muse chat — downloading by hand costs no allowance.
 
 Every generation really spends that account's Muse allowance, exactly as clicking in the web UI would. The same prompt produces a different result twice — there is no seed upstream and the plugin does not offer one. A rate limit or an exhausted allowance stops the task; the plugin will not quietly switch accounts, with one exception: an expired sign-in.
 
-## ⚠️ The two real reasons a generation fails
+## Troubleshooting generation failures
 
 Muse **accepts** the request and then produces nothing. Two causes are known, and they need opposite responses:
 

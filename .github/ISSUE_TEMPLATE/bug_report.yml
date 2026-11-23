@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        感谢反馈。请先确认：**重启过 Harness**、**Chrome 能正常登录 muse.ai**。
+        请写下出问题的操作，以及你在 Muse 页面和插件里分别看到的结果。涉及生成文件时，请注明记录是否标为「仅预览」。
 
         ⚠️ 不要贴账号密码、`.npmrc` 里的 token、或 Muse 的 cookie / 会话 token。
 
@@ -36,7 +36,7 @@ body:
     id: diagnostics
     attributes:
       label: 诊断信息
-      description: 设置 → Muse → 高级 → 诊断 里的内容。
+      description: 设置 → Muse → 设置 → 诊断 里的内容。
       render: text
     validations:
       required: false
