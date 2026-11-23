@@ -42,21 +42,19 @@ Harness 版本：0.2.2-rc.5
 - **muse.ai 改版导致页面选择器失效**：这类问题优先级最高，因为整个插件都依赖那几个选择器。
 - **新增功能请求**：会评估是否值得做，但不会为了「功能多」而加。这个插件故意不提供代理中转、签到领取、媒体库这些东西——它们是另一个产品的范围。
 
-## 提交代码
+## 提交代码与发版
 
-```bash
-git clone https://github.com/sizhe03/dsh-muse-media.git
-cd dsh-muse-media
-```
+在仓库根目录运行 `npm run check` 检查语法并执行测试，用 `npm pack --dry-run` 核对打包内容。分支推送和 PR 会运行 CI。页面测试会在 Chrome 中运行本地测试页面，涉及真实 Muse 网页布局的改动还需要在真实账号验证。
 
-改完请自行验证：
+维护者同意发版后，按当前手动流程更新包版本和 CHANGELOG。市场索引使用 npm 的实际发布时间，须在该版本可从 npm 安装后运行 `node scripts/sync-market-index.mjs`。将版本、更新记录和同步后的索引一起提交，运行 `npm test`，再打对应的 `v*` 标签。普通文档更新直接提交即可。
 
-```bash
-node --check index.js && node --check client.js
-npm pack --dry-run          # 确认打包内容
-```
+标签会触发发布工作流校验版本，工作流也支持手动触发。仅在仓库变量 `NPM_PUBLISH_ENABLED` 为 `true` 时，工作流才会执行 npm 发布。手动发布与工作流发布应择一执行。
 
-如果要发版，需要改 `package.json` 的 `version`，否则已安装的用户收不到更新。
+## Development and releases
+
+Run `npm run check` for syntax and tests, then `npm pack --dry-run` to inspect the package. CI runs on branch pushes and pull requests. The browser tests use local fixtures in Chrome. Verify changes that depend on Muse’s live markup against the actual site as well.
+
+A release requires maintainer approval. In the manual process, update the package version and changelog, publish the approved package, then run `node scripts/sync-market-index.mjs` once the registry serves the new version. Commit the manifest, changelog and index together, run `npm test`, and tag the verified commit. The tag workflow verifies the version. Its npm publish step is gated by `NPM_PUBLISH_ENABLED` and should only be used as the publishing method for a version that has yet to ship.
 
 ## 许可
 

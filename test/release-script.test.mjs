@@ -35,8 +35,9 @@ test("the index timestamp rule is stated where someone will read it", () => {
 
 test("the memo's documented procedure matches the scripts that exist", () => {
   // The memo lives outside the repository, so this only checks the parts it names inside it.
-  const readme = readFileSync("README.md", "utf8");
-  assert.match(readme, /npm test/, "the release procedure is described in README.md");
+  const guide = readFileSync("CONTRIBUTING.md", "utf8");
+  assert.match(guide, /npm test/);
+  assert.ok(guide.includes("node scripts/sync-market-index.mjs"));
 
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   // Compare the intent, not the exact quoting: the value embeds quotes around the glob.

@@ -1,13 +1,11 @@
-// The region block has facts that took two months of measurement to establish. They belong in tests so a
-// later edit cannot quietly soften them back into "try again".
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { looksLikeRegionRefusal, looksLikeContentRefusal } from "../lib/pool.js";
 
-const readme = readFileSync("README.md", "utf8");
-const readmeEn = readFileSync("README.en.md", "utf8");
+const guide = readFileSync("docs/TROUBLESHOOTING.md", "utf8");
+const [zh, en] = guide.split(/^## English$/m);
 const toolText = readFileSync("index.js", "utf8");
 
 test("a 403 naming a region is recognised", () => {
@@ -18,42 +16,33 @@ test("a 403 naming a region is recognised", () => {
   }
 });
 
-test("the four supported regions are named in both READMEs", () => {
-  for (const doc of [readme, readmeEn]) {
-    for (const region of ["美国", "加拿大", "日本", "新加坡"]) {
-      if (doc === readme) assert.ok(doc.includes(region), `missing ${region}`);
-    }
-  }
-  // The English README names them in English.
-  for (const region of ["United States", "Canada", "Japan", "Singapore"]) {
-    assert.ok(readmeEn.includes(region), `missing ${region}`);
-  }
+test("both troubleshooting sections name the regions with recorded successes", () => {
+  for (const name of ["美国", "加拿大", "日本", "新加坡"]) assert.ok(zh.includes(name));
+  for (const name of ["United States", "Canada", "Japan", "Singapore"]) assert.ok(en.includes(name));
 });
 
-test("the documentation states the block is permanent, not temporary", () => {
-  // The measured fact: an account flagged at registration was still blocked two months later. A message
-  // that implies "try again later" sends the user to repeat something proven not to work.
-  assert.match(readme, /两个月/, "the Chinese README must record the two-month observation");
-  assert.match(readme, /永久|不会恢复|无法恢复/, "it must say the block does not heal");
-  assert.match(readmeEn, /two months|does not recover/, "the English README must say the same");
+test("the account restriction is documented within the observation period", () => {
+  assert.match(zh, /七个账号、两个月/);
+  assert.match(en, /seven accounts observed for two months/);
+  assert.doesNotMatch(zh, /永久/);
+  assert.doesNotMatch(en, /permanent/i);
 });
 
-test("the documentation says changing IP will not help", () => {
-  assert.match(readme, /换 IP[^。]*不会/, "must state that another IP will not restore video");
-  assert.match(readmeEn, /changing IP[^.]*will not/, "same in English");
+test("the IP change result is attributed to the observed account", () => {
+  assert.match(zh, /该账号换 IP 后仍受限/);
+  assert.match(en, /Changing IP did not restore video for that account/);
 });
 
-test("the documentation covers WebRTC and DNS leaks", () => {
-  // A nominally correct exit is defeated by a leak, which is the failure mode users hit without knowing.
-  for (const doc of [readme, readmeEn]) {
-    assert.match(doc, /WebRTC/);
-    assert.match(doc, /DNS/);
+test("the documentation records the network diagnostics considered", () => {
+  for (const section of [zh, en]) {
+    assert.match(section, /WebRTC/);
+    assert.match(section, /DNS/);
   }
 });
 
-test("the documentation says the email does not matter", () => {
-  assert.match(readme, /邮箱/);
-  assert.match(readmeEn, /email/i);
+test("the documentation records registration email among the factors considered", () => {
+  assert.match(zh, /注册邮箱/);
+  assert.match(en, /registration email/i);
 });
 
 test("the tool description tells the model not to suggest retrying with another IP", () => {
@@ -64,8 +53,8 @@ test("the tool description tells the model not to suggest retrying with another 
 
 test("images remain usable on a region-blocked account", () => {
   // The measured behaviour: the same account that cannot make video still makes images.
-  assert.match(readme, /图片生成不受影响|图片不受此限制|同一账号的图片/);
-  assert.match(readmeEn, /image generation kept working|Images are not restricted/i);
+  assert.match(zh, /图片生成不受影响|图片不受此限制|同一账号的图片/);
+  assert.match(en, /image generation kept working|Images are not restricted/i);
 });
 
 test("a region block and a content refusal stay distinct", () => {
