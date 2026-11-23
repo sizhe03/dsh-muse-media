@@ -8,6 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, existsSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, normalize } from "node:path";
 import { execFileSync } from "node:child_process";
 
 const read = (path) => readFileSync(path, "utf8");
@@ -66,10 +67,36 @@ test("locale files carry the fields the plugin manager reads", () => {
   }
 });
 
-test("the detail document is exactly one image line", () => {
-  const lines = read("docs/DETAIL.md").trim().split(/\r?\n/).filter((line) => line.trim() !== "");
-  assert.equal(lines.length, 1, "a detail document must contain one image and nothing else");
-  assert.match(lines[0], /^!\[.+\]\(.+\)$/);
+/**
+ * The detail document is the first screen a marketplace visitor sees.
+ *
+ * It used to be constrained to a single image line, which was true when it only carried a screenshot. It now explains what the plugin
+ * does, so the assertion moves from shape to substance: it must be readable prose with working references, not an empty shell and not
+ * a pile of dead links.
+ */
+test("the detail document explains the plugin and its references resolve", () => {
+  const text = read("docs/DETAIL.md");
+
+  // A marketplace page with only a picture tells a visitor nothing.
+  const prose = text
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "" && !line.trim().startsWith("#") && !line.trim().startsWith("|"))
+    .join("\n");
+  assert.ok(prose.length > 800, `the detail document needs real prose, got ${prose.length} characters`);
+
+  // Every relative link and image must point at a file that exists.
+  const base = dirname(join(process.cwd(), "docs/DETAIL.md"));
+  const targets = [...text.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1]);
+  assert.ok(targets.length > 0, "the document should reference something");
+
+  for (const target of targets) {
+    if (/^https?:/.test(target) || target.startsWith("#")) continue;
+    const resolved = normalize(join(base, target.split("#")[0]));
+    assert.ok(existsSync(resolved), `broken reference: ${target}`);
+  }
+
+  // It must not resurrect the retired per-generation switch.
+  assert.ok(!/独立生成.{0,6}开关/.test(text), "the retired switch must not appear as a current feature");
 });
 
 test("the preview image satisfies the documented constraints", () => {

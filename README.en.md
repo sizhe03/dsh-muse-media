@@ -68,13 +68,30 @@ If the record says **Preview only**, its download is the preview. Open the origi
 
 Change these in **Settings → Muse → Settings**, then select **Save**.
 
+**Common ones** — change these in Settings and select Save:
+
 | Setting | Default | Purpose |
 | --- | --- | --- |
+| `autoSetMemoryRule` | `true` | Write the side-chat rule after a new account's first verified sign-in. Turning it off affects only accounts added later; rules already written are not removed. |
+| `showQuotaInComposer` | `true` | Show weekly usage beside the composer |
 | `headlessAfterLogin` | `true` | Generate in the background after sign-in |
 | `idleReapSeconds` | `600` | Seconds before closing an idle browser. Use `0` to keep it open. |
 | `maxLiveBrowsers` | `2` | Concurrent browsers. Use `0` for unlimited. |
 | `imageTimeoutSeconds` | `300` | Seconds to wait for an image |
 | `videoTimeoutSeconds` | `780` | Seconds to wait for a video |
+| `autoRefreshQuotaSeconds` | `300` | Seconds between automatic usage refreshes. Use `0` to stop refreshing automatically. |
+
+**The rest live in `cordis.patch.yml`** and rarely need changing:
+
+| Setting | Default | Purpose |
+| --- | --- | --- |
+| `chromePath` | `""` | Explicit Chrome path; detected automatically when empty |
+| `maxAccountsPerTask` | `2` | Accounts tried per task, including the preferred one |
+| `quotaTimeoutSeconds` | `90` | Timeout for reading the usage panel |
+| `deliveryWarnSeconds` | `25` | Seconds after sending before warning that delivery is unconfirmed |
+| `deliveryUnknownSeconds` | `60` | Seconds after sending before the outcome is treated as unknown |
+| `probeTimeoutSeconds` | `60` | Timeout for the conversation check |
+| `debugPortBase` | `19220` | First debug port; the next free one is used if taken |
 
 </details>
 
