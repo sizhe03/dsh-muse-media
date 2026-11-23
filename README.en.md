@@ -22,6 +22,8 @@ Then in Harness: **Settings → Muse → New account → Open sign-in window**, 
 
 After that, just ask in the conversation.
 
+To revise a result, ask “make the background of that image navy” or “slow down the last second of that video.” Both tools take the previous result’s `taskId` as `continueFromTaskId` and send the change in the original account and thread. For successive edits, use the latest version. New works start a fresh chat. For older records without a saved thread, continue in Muse directly or upload the old image as a reference.
+
 ## Requirements
 
 1. **Chrome, Chromium, or Edge.** No browser is bundled.

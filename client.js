@@ -169,7 +169,7 @@ window.__ModuleLoader__.load({
       "settings.openMediaDir": "打开媒体文件夹",
       "settings.fieldIndependent": "提示 Muse 独立生成",
       "settings.fieldIndependentHint":
-        "每次生成时，请 Muse 只参考本次提示词和附件。Muse 的长期记忆仍然开启。",
+        "生成新作品时，请 Muse 只参考本次输入。续改沿用原对话。Muse 的长期记忆仍然开启。",
       "settings.fieldPill": "在输入框显示额度",
       "settings.fieldPillHint": "在对话输入框旁边显示本周已用百分比。",
       "settings.fieldIdle": "空闲回收（秒）",
@@ -324,9 +324,9 @@ window.__ModuleLoader__.load({
       "settings.openBrowser": "Open browser",
       "settings.opening": "Opening…",
       "settings.openMediaDir": "Open the media folder",
-      "settings.fieldIndependent": "Ask for an independent generation each time",
+      "settings.fieldIndependent": "Ask Muse to generate new works independently",
       "settings.fieldIndependentHint":
-        "Ask Muse to use only this prompt and its attachments for each generation. Muse’s long-term memory stays on.",
+        "For new work, ask Muse to use only this prompt and its attachments. Revisions use the original thread. Muse’s long-term memory stays on.",
       "settings.fieldPill": "Show usage beside the composer",
       "settings.fieldPillHint": "Display the weekly percentage next to the message box.",
       "settings.fieldIdle": "Reap an idle browser after (s)",

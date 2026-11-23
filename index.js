@@ -38,7 +38,7 @@ import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
-import { MusePage, THREAD_URL, isPromptComplete } from "./lib/muse.js";
+import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
 import { AccountStore, TaskStore, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
@@ -1165,7 +1165,7 @@ class MuseRuntime {
    * whole attempt; the journal is written before the send, and every exit that
    * left a request possibly in flight records `unknown` and forbids a retry.
    */
-  async runMediaTask({ kind, prompt, references }) {
+  async runMediaTask({ kind, prompt, references, continueFromTaskId }) {
     const config = this.settings();
     if (typeof prompt !== "string" || prompt.trim() === "") {
       throw new MuseFailure("prompt 必填，且必须是非空字符串。", {
@@ -1210,17 +1210,32 @@ class MuseRuntime {
      * allowance. The pick still settles ties, and the result always names the
      * account that actually ran.
      */
-    const preferred = this.preferredAccount();
-    const ranked = rankAccounts(this.#accounts.list(), {
-      preferredId: preferred.id,
-      now: Date.now(),
-    });
-    const chosen = ranked.ordered[0] ?? preferred;
+    let parent;
+    let chosen;
+    if (continueFromTaskId !== undefined) {
+      parent = this.#tasks.get(continueFromTaskId);
+      if (parent?.state !== TASK_STATE.DELIVERED || !parent.prompt ||
+          !museThreadUrl(parent.threadUrl) || !parent.turn) {
+        throw new MuseFailure("找不到可续改的作品记录。旧版生成的作品可在原 Muse 对话里修改，图片也可作为参考图重新上传。", {
+          code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+        });
+      }
+      chosen = this.#accounts.get(parent.accountId);
+      if (!chosen) throw new MuseFailure("原作品的 Muse 账号已移除，无法打开原对话。", {
+        code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+      });
+    } else {
+      const preferred = this.preferredAccount();
+      chosen = rankAccounts(this.#accounts.list(), {
+        preferredId: preferred.id, now: Date.now(),
+      }).ordered[0] ?? preferred;
+    }
 
     const task = this.#tasks.create({
       kind,
       accountId: chosen.id,
       accountLabel: chosen.label,
+      parentTaskId: parent?.id,
       /**
        * Stored at birth, not on delivery.
        *
@@ -1251,8 +1266,9 @@ class MuseRuntime {
             references,
             preferred: chosen,
             task,
-            config,
-            });
+            parent,
+            config: parent ? { ...config, maxAccountsPerTask: 1 } : config,
+          });
         } catch (error) {
           // The floor for an exit that journaled nothing. It must never
           // *downgrade* a record that already says a request may be upstream:
@@ -1269,7 +1285,7 @@ class MuseRuntime {
           throw error;
         }
       },
-      { accountId: preferred.id },
+      { accountId: chosen.id },
     );
   }
 
@@ -1283,7 +1299,7 @@ class MuseRuntime {
    * unreadable page) ends the attempt on that account and never spends somebody
    * else's quota on the same prompt.
    */
-  async #runAccountLoop({ kind, prompt, references, preferred, task, config }) {
+  async #runAccountLoop({ kind, prompt, references, preferred, task, config, parent }) {
     const attempted = [preferred.id];
     let account = preferred;
     let lastFailure;
@@ -1303,6 +1319,9 @@ class MuseRuntime {
        * cooldown, sign-out, disablement.
        */
       const fresh = this.#accounts.get(account.id);
+      if (!fresh && parent) throw new MuseFailure("排队期间原作品的账号已移除，无法续改。", {
+        code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+      });
       if (fresh !== undefined) account = fresh;
       const verdict = eligibility(account);
 
@@ -1410,6 +1429,7 @@ class MuseRuntime {
           account,
           task,
           config,
+          parent,
         });
         this.#accounts.update(account.id, { lastUsedAt: Date.now(), status: ACCOUNT_STATUS.READY });
         /**
@@ -1425,7 +1445,7 @@ class MuseRuntime {
           ...result,
           taskId: task.id,
           account: { id: account.id, label: account.label },
-          accountReason: this.#explainChoice(account, preferred),
+          accountReason: parent ? "沿用原作品的 Muse 账号和对话。" : this.#explainChoice(account, preferred),
         };
       } catch (error) {
         const failure = asFailure(error, { stage: "generate" });
@@ -1527,12 +1547,13 @@ class MuseRuntime {
   }
 
   /** One account's whole attempt, from page open to media bytes. */
-  async #attemptOnAccount({ kind, prompt, references, account, task, config }) {
+  async #attemptOnAccount({ kind, prompt, references, account, task, config, parent }) {
     const { files, sources } = await this.materializeReferences(references, task.id);
+    const revision = parent ? { threadUrl: museThreadUrl(parent.threadUrl), turn: parent.turn } : undefined;
 
     return this.#browser.withPage(
       account.id,
-      { visible: !config.headlessAfterLogin, url: THREAD_URL, timeoutMs: 60_000 },
+      { visible: !config.headlessAfterLogin, url: revision?.threadUrl ?? THREAD_URL, timeoutMs: 60_000 },
       async (rawPage) => {
         const page = new MusePage(rawPage, this.#log);
         const ready = await page.waitReady({ timeoutMs: 45_000 });
@@ -1562,7 +1583,8 @@ class MuseRuntime {
 
         // The composer must start clean: a leftover attachment from an earlier
         // task would ride along with this prompt.
-        await page.clearComposer({ fresh: true });
+        if (revision) await page.openRevision(revision, [parent.prompt, `${INDEPENDENT_HINT}\n\n${parent.prompt}`]);
+        await page.clearComposer({ fresh: !revision });
 
         let upload = { attached: 0 };
         if (files.length > 0) {
@@ -1576,7 +1598,7 @@ class MuseRuntime {
          * A blank line separates the instruction from the description so Muse reads them as instruction and content
          * rather than one run-on sentence.
          */
-        const outgoing = config.independentGeneration === false ? prompt : `${INDEPENDENT_HINT}\n\n${prompt}`;
+        const outgoing = revision || config.independentGeneration === false ? prompt : `${INDEPENDENT_HINT}\n\n${prompt}`;
         const promptResult = await page.setPrompt(outgoing);
         if (promptResult.length === 0) {
           throw new MuseFailure("提示词没有进入输入框，已停止（没有提交）。", {
@@ -1627,6 +1649,9 @@ class MuseRuntime {
          * *before* the point of no return instead of spending a request into a live limit.
          */
         const current = this.#accounts.get(account.id);
+        if (!current && revision) throw new MuseFailure("原作品的账号已移除，本次没有发送。", {
+          code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+        });
         if (current !== undefined) {
           const verdictNow = eligibility(current);
           if (!verdictNow.usable) {
@@ -1654,7 +1679,7 @@ class MuseRuntime {
           });
         }
 
-        const send = await page.sendOnce({ expectedPrompt: outgoing });
+        const send = await page.sendOnce({ expectedPrompt: outgoing, revision });
         if (!send.fired) {
           const note = send.reason === "prompt-mismatch"
             ? "Muse 输入框正文与本次工具提示词不一致，已停止发送。"
@@ -1743,7 +1768,7 @@ class MuseRuntime {
          * be wrong, and reporting nothing would hide a real capability fact — so
          * both numbers are carried and the wording says which is which.
          */
-        const roundEvidence = await page.roundUserAttachments(prompt).catch(() => undefined);
+        const roundEvidence = await page.roundUserAttachments(outgoing).catch(() => undefined);
         const roundCount = roundEvidence === undefined ? undefined : roundEvidence.count;
         const uploadCount = upload.attached ?? 0;
         if (files.length > 0 && roundCount !== undefined && roundCount < files.length) {
@@ -1767,7 +1792,7 @@ class MuseRuntime {
            * reported `unknown` at ~300 s with the result still upstream.
            */
           const deadline = Date.now() + (kind === "video" ? config.videoTimeoutSeconds : config.imageTimeoutSeconds) * 1000;
-          media = await page.waitMedia(baseline, { kind, deadline, referenceSources: sources });
+          media = await page.waitMedia(baseline, { kind, deadline, revision, expectedPrompt: outgoing, referenceSources: sources });
         } catch (error) {
           const failure = asFailure(error, { stage: "media" });
           // Explicit refusals are final answers, even though delivery was confirmed.
@@ -1800,6 +1825,8 @@ class MuseRuntime {
         this.#tasks.update(task.id, {
           state: TASK_STATE.DELIVERED,
           media: stored.file,
+          threadUrl: museThreadUrl(media.threadUrl),
+          turn: media.turn,
           /**
            * Wall-clock duration, for the history list.
            *
@@ -2916,9 +2943,11 @@ const GENERATION_BRIEF_GUIDANCE =
   "size 等单独参数不能替代正文里的交付规格；上游能否满足这些规格需以成品为准。";
 
 const BRIEF_REFERENCE_HELP =
+  "修改刚生成的图或视频时，把该作品返回的 taskId 填入 continueFromTaskId，提示词只写本次修改。多轮修改指向最新一版；作品不明确时先询问。全新创作省略此字段。" +
   "用户给出了成段生成要求时，尤其是续问其他模型或比较结果，优先用 promptSource 引用原文。只传起始、结束短句，不重写正文。";
 
 const BRIEF_REFERENCE_FIELDS = {
+  continueFromTaskId: { type: "string", description: "要续改的 Muse 作品的 taskId。使用原账号、原对话；新作品省略。" },
   promptSource: {
     type: "object",
     description: "当前 DSH 会话中用户亲写的生成要求。用两个逐字摘录的短句圈定范围（含首尾），可引用上一轮或更早的用户消息。" +
@@ -3103,7 +3132,7 @@ function imageTool(runtime) {
           ? brief
           : `${brief}\n\n(Preferred aspect ratio: ${size})`;
 
-      const result = await runtime.runMediaTask({ kind: "image", prompt, references });
+      const result = await runtime.runMediaTask({ kind: "image", prompt, references, continueFromTaskId: record.continueFromTaskId });
       const seconds = (Date.now() - startedAt) / 1000;
       const attachment = await runtime.persistImage(result, size);
       return {
@@ -3241,6 +3270,7 @@ function videoTool(runtime) {
 
       const result = await runtime.runMediaTask({
         kind: "video",
+        continueFromTaskId: record.continueFromTaskId,
         prompt,
         // Several references are allowed, matching what the composer accepts. The
         // first is the starting frame; what Muse does with the rest is undocumented.

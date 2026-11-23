@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-import { MusePage, pageReady, pageSnapshot, pageRoundAttachments, describeReadyState } from "../lib/muse.js";
+import { MusePage, museThreadUrl, pageReady, pageSnapshot, pageRoundAttachments, describeReadyState } from "../lib/muse.js";
 
 /* ============================================================
  * describeReadyState — pure
@@ -136,6 +136,56 @@ test("waitMedia waits past a sibling upload preview and delivers the assistant's
   assert.deepEqual(media.bytes, Buffer.from(original.split(",")[1], "base64"));
   assert.equal(media.width, 64);
   assert.ok(samples >= 4);
+});
+
+test("only saved Muse thread URLs can be reopened", () => {
+  assert.equal(museThreadUrl("https://muse.ai/thread/work-1/?view=chat"), "https://muse.ai/thread/work-1");
+  for (const url of [undefined, "/thread/id", "https://muse.ai/thread/new", "https://muse.ai/thread/new/",
+    "https://other.test/thread/id", "https://user@muse.ai/thread/id", "https://muse.ai/thread/id/path"]) {
+    assert.equal(museThreadUrl(url), undefined);
+  }
+});
+
+test("a reopened conversation ignores delayed prior media and returns only this edit", async (t) => {
+  if (!handle) return t.skip("no Chrome on this machine");
+  const threadUrl = "https://muse.ai/thread/original";
+  const revision = { threadUrl, turn: 1 };
+  const html = '<body><main><textarea></textarea><button aria-label="Send">Send</button>' +
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">原图</div>' +
+    '<div class="group/msg" id="old"><div class="hatch-chat-groupable-bubble hatch-agent-bubble-bg">好了</div>' +
+    '<div data-testid="hatch-chat-attachment-presentation-image"><img></div></div></main></body>';
+  await run(html, pageSnapshot);
+  const page = new MusePage(handle);
+  t.mock.method(page, "openThread", async ({ url }) => assert.equal(url, threadUrl));
+  const read = page.snapshot.bind(page);
+  t.mock.method(page, "snapshot", async deadline => ({ ...await read(deadline), href: threadUrl }));
+  await page.openRevision(revision, ["原图"]);
+  const baseline = await page.snapshot();
+  // The local fixture has a different origin. The actual button must stay untouched.
+  assert.equal((await page.sendOnce({ expectedPrompt: "", revision })).reason, "thread-changed");
+  const [old, edited] = await handle.js(`[8, 16].map(size => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    return canvas.toDataURL('image/png');
+  })`);
+  await handle.js(`document.querySelector('main').insertAdjacentHTML('beforeend',
+    '<div class="hatch-chat-groupable-bubble chat-user-bubble">改蓝</div>');
+    document.querySelector('#old img').src = ${JSON.stringify(old)}; document.images[0].decode()`);
+  let samples = 0;
+  t.mock.method(page, "snapshot", async deadline => {
+    if (++samples === 4) {
+      await handle.js(`document.querySelector('main').insertAdjacentHTML('beforeend',
+        '<div class="hatch-chat-groupable-bubble hatch-agent-bubble-bg">已修改</div>' +
+        '<div data-testid="hatch-chat-attachment-presentation-image"><img></div>');
+        document.images[1].src = ${JSON.stringify(edited)}; document.images[1].decode()`);
+    }
+    return { ...await read(deadline), href: threadUrl };
+  });
+  const media = await page.waitMedia(baseline, { kind: "image", deadline: Date.now() + 6000, revision, expectedPrompt: "改蓝" });
+  assert.deepEqual(media.bytes, Buffer.from(edited.split(",")[1], "base64"));
+  assert.equal(media.threadUrl, threadUrl);
+  assert.equal(media.turn, 2);
+  await assert.rejects(page.openRevision(revision, ["原图"]), { code: "REVISION_UNAVAILABLE" });
 });
 
 test("an undecodable 0×0 image stops at the media deadline", async (t) => {

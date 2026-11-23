@@ -11,12 +11,12 @@ import { TaskStore } from "../lib/store.js";
 
 // Exercise the registered tools and the on-disk journal, replacing just the host
 // services and browser I/O. Each test owns its data directory and page state.
-function fixture(t, config = {}) {
+function fixture(t, config = {}, accounts = [{ id: "acc-01", label: "Studio", status: "ready" }]) {
   const home = mkdtempSync(join(tmpdir(), "muse-task-"));
   const root = join(home, "muse-media");
   mkdirSync(root);
   writeFileSync(join(root, "state.json"), JSON.stringify({
-    selectedId: "acc-01", accounts: [{ id: "acc-01", label: "Studio", status: "ready" }],
+    selectedId: "acc-01", accounts,
   }));
   const state = { sends: 0, usedPct: 10, reply: "", readings: [] };
   const snapshot = () => ({
@@ -79,6 +79,87 @@ for (const enabled of [false, true]) {
     assert.equal(expected, written);
   });
 }
+
+for (const kind of ["image", "video"]) {
+  test(kind + " revisions follow the selected work through two edits and leave new work independent", async (t) => {
+    const f = fixture(t);
+    const tool = f.registry.get("muse_draw_" + kind);
+    const opens = [], resets = [], sends = [];
+    let thread = 0, turn = 0;
+    f.page("openRevision", async (revision, prompts) => {
+      opens.push(revision);
+      assert.ok(prompts.includes(sends[turn - 1]));
+    });
+    f.page("clearComposer", async ({ fresh }) => {
+      resets.push(fresh);
+      if (fresh) { thread++; turn = 0; }
+    });
+    f.page("sendOnce", async ({ expectedPrompt }) => {
+      sends.push(expectedPrompt);
+      return { fired: true };
+    });
+    f.page("waitMedia", async () => ({
+      ...image, mime: kind === "video" ? "video/mp4" : image.mime, kind,
+      threadUrl: "https://muse.ai/thread/work-" + thread, turn: ++turn,
+    }));
+    const first = await tool.execute({ prompt: "画一枚卡带" });
+    const edit = await tool.execute({ prompt: "背景改蓝", continueFromTaskId: first.taskId });
+    const final = await tool.execute({ prompt: "再暗一点", continueFromTaskId: edit.taskId });
+    await tool.execute({ prompt: "全新的项目" });
+    assert.deepEqual(resets, [true, false, false, true]);
+    assert.deepEqual(opens, [1, 2].map(turn => ({ threadUrl: "https://muse.ai/thread/work-1", turn })));
+    assert.match(sends[0], /^请独立/);
+    assert.deepEqual(sends.slice(1, 3), ["背景改蓝", "再暗一点"]);
+    assert.match(sends[3], /^请独立/);
+    const saved = f.tasks().find(row => row.id === final.taskId);
+    assert.equal(saved.parentTaskId, edit.taskId);
+    assert.equal(saved.threadUrl, opens[0].threadUrl);
+    assert.equal(saved.turn, 3);
+  });
+}
+
+test("a different intervening work does not become the target of an edit", async (t) => {
+  const f = fixture(t);
+  let threadUrl, serial = 0;
+  f.page("clearComposer", async ({ fresh }) => {
+    if (fresh) threadUrl = "https://muse.ai/thread/work-" + ++serial;
+  });
+  f.page("waitMedia", async (_baseline, { revision }) =>
+    ({ ...image, threadUrl, turn: (revision?.turn ?? 0) + 1 }));
+  const original = await f.draw("卡带");
+  await f.draw("海边");
+  assert.equal(threadUrl, "https://muse.ai/thread/work-2");
+  f.page("openRevision", async revision => { threadUrl = revision.threadUrl; });
+  const edit = await f.registry.get("muse_draw_image").execute({ prompt: "卡带改蓝", continueFromTaskId: original.taskId });
+  assert.equal(f.tasks().find(row => row.id === edit.taskId).threadUrl, "https://muse.ai/thread/work-1");
+});
+
+test("an unknown or legacy task cannot accidentally start a new chat", async (t) => {
+  const f = fixture(t);
+  f.page("waitMedia", async () => image);
+  const legacy = await f.draw();
+  for (const id of ["missing", "", legacy.taskId]) {
+    await assert.rejects(f.registry.get("muse_draw_image").execute({ prompt: "改蓝", continueFromTaskId: id }),
+      { code: "REVISION_UNAVAILABLE" });
+  }
+  assert.equal(f.tasks().length, 1);
+  assert.equal(f.state.sends, 1);
+});
+
+test("a revision on a signed-out account never tries the second account", async (t) => {
+  const f = fixture(t, {}, ["acc-01", "acc-02"].map(id => ({ id, label: id, status: "ready" })));
+  f.page("waitMedia", async () => ({ ...image, threadUrl: "https://muse.ai/thread/test", turn: 1 }));
+  const first = await f.draw();
+  const accounts = [];
+  t.mock.method(MuseBrowser.prototype, "withPage", async (id, _options, fn) => {
+    accounts.push(id);
+    return fn({ closed: false });
+  });
+  f.page("waitReady", async () => "signed-out");
+  await assert.rejects(f.registry.get("muse_draw_image").execute({ prompt: "改蓝", continueFromTaskId: first.taskId }));
+  assert.ok(accounts.length > 0 && accounts.every(id => id === first.account));
+  assert.equal(f.state.sends, 1);
+});
 
 const sourceBrief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
 const promptSource = { start: "为频道 @audio88", end: "保留完整方图。" };
