@@ -36,7 +36,7 @@ After that, just ask in the conversation.
 
 Muse has no separate video mode: the web UI has one composer, and "make a video" lives in the prompt. Put duration and camera direction in `prompt`.
 
-Both generation tools accept `promptSource` to reuse a user-authored brief from the current DSH chat. Its `start` and `end` are exact excerpts delimiting one text range, inclusive. Later runs can reuse the same range and append explicit changes via `promptAmendment`. The range must cover at least half of the non-whitespace characters in the source text block, excluding amendments. For a short brief embedded in a long message, pass the exact brief via `prompt`. A missing or ambiguous range stops the call before a task is created. Direct calls can still supply a complete `prompt`.
+Both generation tools accept `promptSource` to reuse a user-authored brief from the current DSH chat. Its `start` and `end` are exact excerpts delimiting one text range, inclusive. Later runs can reuse the same range and append explicit changes via `promptAmendment`. Select complete sentences or lines, including their original punctuation. A brief can also start after a label such as “Prompt:”. Surrounding conversation can be any length. For a phrase inside a sentence, use `prompt` directly. A missing or ambiguous range stops the call before a task is created. Direct calls can still supply a complete `prompt`.
 
 ## The settings page
 

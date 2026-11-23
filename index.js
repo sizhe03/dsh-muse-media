@@ -2922,7 +2922,7 @@ const BRIEF_REFERENCE_FIELDS = {
   promptSource: {
     type: "object",
     description: "当前 DSH 会话中用户亲写的生成要求。用两个逐字摘录的短句圈定范围（含首尾），可引用上一轮或更早的用户消息。" +
-      "选择与生成有关的范围，保留开头的用途和末尾的交付规格。范围须覆盖所在文本块至少一半的非空白字符。若完整生成要求只占一小段，改用 prompt 逐字传入。与 prompt 二选一。",
+      "选择与生成有关的范围，保留开头的用途和末尾的交付规格。从句首或行首选到句末或行末，包含末尾标点；可以从提示词标签的冒号后开始。若只需句内片段，改用 prompt 逐字传入。与 prompt 二选一。",
     properties: {
       start: { type: "string", description: "原文开头的连续字符，含原标点，不加省略号。" },
       end: { type: "string", description: "原文结尾的连续字符，含原标点，不加省略号。" },
@@ -2933,6 +2933,21 @@ const BRIEF_REFERENCE_FIELDS = {
     type: "string", description: "只在引用原文时使用。如用户明确追加修改，逐字填写这部分，附在原文后。否则省略。",
   },
 };
+
+const briefSentences = new Intl.Segmenter("zh", { granularity: "sentence" });
+
+function hasBriefBoundaries(text, first, limit) {
+  // Compare boundaries without changing the whitespace returned to the composer.
+  const range = text.slice(first, limit);
+  const from = limit - range.trimStart().length;
+  const to = first + range.trimEnd().length;
+  const sentences = briefSentences.segment(text);
+  const head = sentences.containing(from);
+  const tail = sentences.containing(to - 1);
+  const before = text.slice(head.index, from).trimEnd();
+  const after = text.slice(to, tail.index + tail.segment.length).trim();
+  return (!before || /[:：]$/u.test(before)) && after === "";
+}
 
 function generationBrief(args, exec) {
   const invalid = (message) => new MuseFailure(message, { code: "INVALID_ARGS", kind: FAILURE.INVALID });
@@ -2950,8 +2965,7 @@ function generationBrief(args, exec) {
   }
   const session = exec?.agent?.session;
   if (typeof session?.deriveMessages !== "function") throw invalid("当前调用无法读取会话原文，请用 prompt 逐字传入完整要求。");
-  let selected;
-  let sourceText;
+  let match;
   for (const message of session.deriveMessages()) {
     if (message.role !== "user" || message.source?.kind !== "user") continue;
     for (const block of message.content) {
@@ -2965,19 +2979,19 @@ function generationBrief(args, exec) {
       if (last < 0) continue;
       const nextStart = text.indexOf(start, first + 1);
       const nextEnd = text.indexOf(end, last + 1);
-      if (selected !== undefined || nextEnd >= 0 ||
+      if (match !== undefined || nextEnd >= 0 ||
           (nextStart >= 0 && nextStart + start.length <= last + end.length && nextStart <= last)) {
         throw invalid("首尾短句对应多个原文范围，请选更具体的短句，或逐字传入完整 prompt。");
       }
-      selected = text.slice(first, last + end.length);
-      sourceText = text;
+      match = { text, first, limit: last + end.length };
     }
   }
-  if (selected === undefined) throw invalid("未在当前会话的用户正文中找到这对首尾短句，请核对原文标点及范围。");
-  const contentLength = (text) => Array.from(text.replace(/\s/gu, "")).length;
-  if (contentLength(selected) * 2 < contentLength(sourceText)) {
-    throw invalid("引用范围过小：首尾短句须覆盖原文文本块至少一半的非空白字符。请核对用途和末尾规格；若只需其中一小段，直接用 prompt 逐字传入所需内容。");
+  if (!match) throw invalid("未在当前会话的用户正文中找到这对首尾短句，请核对原文标点及范围。");
+  const { text, first, limit } = match;
+  if (!hasBriefBoundaries(text, first, limit)) {
+    throw invalid("引用范围切在句子或行的中间。请从生成要求的开头选到结尾，包含末尾标点。若确实只需要句内片段，请用 prompt 逐字传入。");
   }
+  const selected = text.slice(first, limit);
   return args.promptAmendment?.trim() ? selected + "\n\n" + args.promptAmendment : selected;
 }
 

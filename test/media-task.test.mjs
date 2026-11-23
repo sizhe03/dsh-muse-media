@@ -113,28 +113,54 @@ test("a fragment of the cartridge brief is rejected before image or video submis
   f.page("setPrompt", async () => assert.fail("fragment reached the composer"));
   for (const kind of ["image", "video"]) {
     await assert.rejects(f.registry.get("muse_draw_" + kind).execute(args, callContext(human(original))),
-      { code: "INVALID_ARGS", message: /范围过小/ });
+      { code: "INVALID_ARGS", message: /句子或行/ });
   }
   assert.equal(f.tasks().length, 0);
   assert.equal(f.state.sends, 0);
 });
 
-test("brief coverage counts non-whitespace code points and accepts exactly half or a short whole brief", async (t) => {
+test("the same complete brief survives leading and trailing chat of any length", async (t) => {
   const f = fixture(t, { independentGeneration: false });
+  const brief = "为频道 @audio88 生成一张动态头像的静态首帧。输出单张 4096 × 4096 像素、PNG、sRGB。" +
+    "烟紫色半透明游戏卡带略微斜放，占画面宽度约三分之二。透过外壳能看到电路板、一颗芯片和铜箔线路。" +
+    "冷白光从侧面穿过卡带，在底部触点留下一小片淡紫色反光。背景接近黑色，保留接触阴影。" +
+    "无文字、品牌或大面积霓虹光效。请务必保留完整方图。";
+  const chat = "另外，这支持批量吗？".repeat(20);
+  assert.equal(brief.length, 169);
+  assert.equal(chat.length, 200);
   let written;
   f.page("setPrompt", async (text) => {
     written = text;
     throw new Error("offline stop before submission");
   });
-  const draw = (text, start, end) => f.registry.get("muse_draw_image").execute(
-    { promptSource: { start, end } }, callContext(human(text)));
-  const selected = "画\n   🎮";
-  await assert.rejects(draw(selected + "。其他", "画", "🎮"), { code: "INVALID_ARGS" });
+  for (const [message, expected, start, end] of [
+    [brief + chat, brief, "为频道 @audio88", "完整方图。"],
+    [chat + brief, brief, "为频道 @audio88", "完整方图。"],
+    [chat + "\r\n" + brief + "\n" + chat, brief, "为频道 @audio88", "完整方图。"],
+    [chat + "\n画猫\n" + chat, "画猫", "画", "猫"],
+    ["提示词：画\n   🎮。另外一个问题。", "画\n   🎮。", "画", "🎮。"],
+  ]) {
+    written = undefined;
+    await assert.rejects(f.registry.get("muse_draw_image").execute({ promptSource: { start, end } },
+      callContext(human(message))));
+    assert.equal(written, expected);
+  }
+  assert.equal(f.state.sends, 0);
+});
+
+test("clipping the middle or the end of a sentence fails regardless of coverage", async (t) => {
+  const f = fixture(t);
+  f.page("setPrompt", async () => assert.fail("clipped source reached composer"));
+  for (const [text, start, end] of [
+    ["请生成一张很精细的游戏卡带封面。", "生成一张", "卡带封面。"],
+    ["请画游戏卡带并保留铜箔纹理。", "请画", "铜箔"],
+    ["生成一张动态头像的静态首帧。输出 4096 × 4096，PNG。", "生成一张", "静态首帧"],
+    ["Use a 3.5 mm lens. Output PNG.", "5 mm", "PNG."],
+  ]) {
+    await assert.rejects(f.registry.get("muse_draw_video").execute({ promptSource: { start, end } },
+      callContext(human(text))), { code: "INVALID_ARGS" });
+  }
   assert.equal(f.tasks().length, 0);
-  await assert.rejects(draw(selected + "其他", "画", "🎮"));
-  assert.equal(written, selected);
-  await assert.rejects(draw("画猫", "画", "猫"));
-  assert.equal(written, "画猫");
 });
 
 test("an invalid or ambiguous source never creates a task", async (t) => {
