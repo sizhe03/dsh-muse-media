@@ -19,23 +19,20 @@ Generate images and videos in a DSH conversation with your own Muse account. Ask
 2. Go to **Settings → Muse**, select **Add account**, then **Open sign-in window** on the account row. Sign in to Muse in that browser window.
 3. Return to Settings and wait for the account to show **Ready**. If the status hasn’t updated, select **Verify sign-in**.
 
-<details>
-<summary>Can’t find Muse in the market? Copy the index URL</summary>
+Once installed, ask in the conversation: “Use Muse to draw a teal ceramic mug on a white background.” To try video, attach the mug image and ask “Use Muse to make a four-second video starting from this frame, with the camera moving slowly toward the rim.” Each generation uses the selected Muse account’s allowance and runs through your installed Chrome, Chromium or Edge.
+
+See the [manifest](package.json) for compatible DSH and Node versions. Market installs receive updates through DSH. For local development, the package is also available on [npm](https://www.npmjs.com/package/dsh-muse-media):
+
+```bash
+npm install dsh-muse-media
+```
+
+### Can’t find Muse in the market? Copy the index URL
 
 Add this URL to the DSH plugin market’s index list, refresh it, then search for **Muse media** again.
 
 ```text
 https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json
-```
-
-</details>
-
-**For your first image**, try “Use Muse to draw a teal ceramic mug on a white background.” To try video, attach the mug image and ask “Use Muse to make a four-second video starting from this frame, with the camera moving slowly toward the rim.” Each generation uses the selected Muse account’s allowance and runs through your installed Chrome, Chromium or Edge.
-
-See the [manifest](package.json) for compatible DSH and Node versions. Market installs receive updates through DSH. For local development, the package is also available on [npm](https://www.npmjs.com/package/dsh-muse-media).
-
-```bash
-npm install dsh-muse-media
 ```
 
 ## Continue an image or video
@@ -61,12 +58,9 @@ If the record says **Preview only**, its download is the preview. Open the origi
 - **Keep projects separate.** By default, after a new account’s first verified sign-in, the plugin sends a rule to the **main Muse chat** asking Muse to use only the current side chat’s context. Read the full rule in Settings. Existing accounts can request it manually. Turning off automatic setup applies to future accounts.
 - **Check or remove the rule.** Expand an account to see the time and Muse’s reply to the last set or removal request. If unconfirmed, **Check chat receipt** reads the existing conversation again. Removal identifies the rule by its name, `DSH-Muse-旁聊独立-v1`, and asks Muse to avoid repeating it. The receipt records Muse’s response. Its effect on a particular generation depends on Muse.
 
-<details>
-<summary>Usage display and common settings</summary>
+### Usage display and common settings
 
 ![Three accounts with their weekly usage and the allowance indicator beside the composer](docs/preview.svg)
-
-Change these in **Settings → Muse → Settings**, then select **Save**.
 
 **Common ones** — change these in Settings and select Save:
 
@@ -93,10 +87,7 @@ Change these in **Settings → Muse → Settings**, then select **Save**.
 | `probeTimeoutSeconds` | `60` | Timeout for the conversation check |
 | `debugPortBase` | `19220` | First debug port; the next free one is used if taken |
 
-</details>
-
-<details>
-<summary>Tools and verbatim prompts</summary>
+### Tools and verbatim prompts
 
 | Tool | Use |
 | --- | --- |
@@ -105,8 +96,6 @@ Change these in **Settings → Muse → Settings**, then select **Save**.
 | `muse_quota` | Read the Muse plan, weekly usage, next reset, and extra allowance. |
 
 Both generation tools accept a complete `prompt`. To reuse a brief verbatim from the current DSH chat, supply its exact opening and closing excerpts, including punctuation, in `promptSource`. Put additional instructions in `promptAmendment`. A missing or ambiguous range stops the call before task creation.
-
-</details>
 
 ## Help and feedback
 

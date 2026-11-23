@@ -19,23 +19,20 @@
 2. 打开 **设置 → Muse**，点 **新增账号**，再在账号行点 **打开登录窗口**。在弹出的浏览器里登录自己的 Muse 账号。
 3. 回到设置页，等账号显示 **可用**。如果状态还没更新，点 **验证登录**。
 
-<details>
-<summary>市场里搜不到 Muse？复制这个索引地址</summary>
+装好后直接在对话里说「用 Muse 画一只青釉咖啡杯，白色背景」。想做视频，可以附上杯子的图片，再说「用 Muse 以这张图为首帧，做一段 4 秒视频，镜头缓慢推近杯口」。每次生成使用所选 Muse 账号的额度，插件会调用本机安装的 Chrome、Chromium 或 Edge。
+
+适用版本见 [插件清单](package.json)。通过市场安装后，可在 DSH 中接收更新。本地开发也可以通过 [npm](https://www.npmjs.com/package/dsh-muse-media) 安装：
+
+```bash
+npm install dsh-muse-media
+```
+
+### 市场里搜不到 Muse？复制这个索引地址
 
 把下面的完整地址添加到 DSH 插件市场的索引列表，刷新后再次搜索 **Muse 媒体**。
 
 ```text
 https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json
-```
-
-</details>
-
-**第一次生成**可以直接在 DSH 对话里说「用 Muse 画一只青釉咖啡杯，白色背景」。想做视频，可以附上杯子的图片，再说「用 Muse 以这张图为首帧，做一段 4 秒视频，镜头缓慢推近杯口」。每次生成使用所选 Muse 账号的额度，插件会调用本机安装的 Chrome、Chromium 或 Edge。
-
-适用版本见 [插件清单](package.json)。通过市场安装后，可在 DSH 中接收更新。本地开发也可以通过 [npm](https://www.npmjs.com/package/dsh-muse-media) 安装。
-
-```bash
-npm install dsh-muse-media
 ```
 
 ## 接着改一张图或一段视频
@@ -61,12 +58,9 @@ npm install dsh-muse-media
 - **减少不同作品互相干扰。** 默认在新账号首次验证登录后，插件向 **Muse 主聊天**发送一次长期规则，请 Muse 只沿用当前旁聊的内容。设置页可展开阅读规则全文。已有账号可手动设置，关闭自动设置只影响后续新账号。
 - **核对或移除规则。** 展开账号可看设置或移除请求的时间和 Muse 实际回复。「待确认」时点「重新读取回执」会再读主聊天，无需重发。移除时只指明规则名 `DSH-Muse-旁聊独立-v1` 并请 Muse 避免复述。回执能确认 Muse 如何回应，实际生成效果仍取决于 Muse。
 
-<details>
-<summary>查看额度示意图和常用设置</summary>
+### 查看额度示意图和常用设置
 
 ![三个账号的周额度和输入框旁的额度提示](docs/preview.svg)
-
-在 **设置 → Muse → 设置** 中调整后点「保存」。
 
 **常用的**（设置页里就能改，改完点「保存」）：
 
@@ -93,10 +87,7 @@ npm install dsh-muse-media
 | `probeTimeoutSeconds` | `60` | 对话连通测试的超时 |
 | `debugPortBase` | `19220` | 调试端口起始值，冲突时自动往上找 |
 
-</details>
-
-<details>
-<summary>生成工具与原文提示词</summary>
+### 生成工具与原文提示词
 
 | 工具 | 用法 |
 | --- | --- |
@@ -105,8 +96,6 @@ npm install dsh-muse-media
 | `muse_quota` | 读取 Muse 计划、本周已用比例、重置时间和额外额度。 |
 
 图片和视频工具都接受完整的 `prompt`。需要逐字使用当前 DSH 聊天里的原文时，可用 `promptSource` 指定含首尾标点的起止短句，新增要求写入 `promptAmendment`。如果范围缺失或有多处匹配，插件会在创建任务前要求修正。
-
-</details>
 
 ## 帮助与反馈
 
