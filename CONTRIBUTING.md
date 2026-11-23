@@ -4,7 +4,8 @@
 
 ## 通过什么方式
 
-- **报错、功能问题、使用疑问** —— [提交问题报告](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)。模板会问版本号和复现步骤，这些信息决定了能不能查下去。
+- 遇到故障时，请写明操作步骤、实际结果、插件和 DSH 版本。[报告故障](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)
+- 使用疑问或功能建议可以在讨论区交流。[参与讨论](https://github.com/sizhe03/dsh-muse-media/discussions)
 - **安全漏洞** —— **不要开公开 issue**，走 [`SECURITY.md`](SECURITY.md) 里的私密报告通道。
 - **想改代码** —— 直接开 PR，或者先开 issue 说说你的想法。
 

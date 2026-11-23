@@ -15,9 +15,22 @@ Generate images and videos in a DSH conversation with your own Muse account. Ask
 
 ## Install and sign in
 
-1. Search for **Muse media** in the DSH plugin market. If it does not appear, add the [Muse market index](https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json) and refresh.
-2. Go to **Settings → Muse → Add account → Open sign-in window**. Sign in to your Muse account in the browser window.
-3. Back in DSH, try “Use Muse to draw a teal ceramic mug on a white background.” Each generation uses that account’s Muse allowance. The plugin uses your installed Chrome, Chromium, or Edge.
+1. Search for **Muse media** in the DSH plugin market and install it.
+2. Go to **Settings → Muse**, select **Add account**, then **Open sign-in window** on the account row. Sign in to Muse in that browser window.
+3. Return to Settings and wait for the account to show **Ready**. If the status hasn’t updated, select **Verify sign-in**.
+
+<details>
+<summary>Can’t find Muse in the market? Copy the index URL</summary>
+
+Add this URL to the DSH plugin market’s index list, refresh it, then search for **Muse media** again.
+
+```text
+https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json
+```
+
+</details>
+
+**For your first image**, try “Use Muse to draw a teal ceramic mug on a white background.” To try video, attach the mug image and ask “Use Muse to make a four-second video starting from this frame, with the camera moving slowly toward the rim.” Each generation uses the selected Muse account’s allowance and runs through your installed Chrome, Chromium or Edge.
 
 See the [manifest](package.json) for compatible DSH and Node versions. Market installs receive updates through DSH. For local development, the package is also available on [npm](https://www.npmjs.com/package/dsh-muse-media).
 
@@ -80,6 +93,6 @@ Both generation tools accept a complete `prompt`. To reuse a brief verbatim from
 
 ## Help and feedback
 
-For a small image, a refusal, a region restriction, or an unknown outcome after sending, look up the symptom in [Troubleshooting](docs/TROUBLESHOOTING.md#english). Include the plugin version and the message you saw when filing an issue. Keep account credentials private.
+For a small image, a refusal, a region restriction, or an unknown outcome after sending, look up the symptom in [Troubleshooting](docs/TROUBLESHOOTING.md#english). When reporting a bug, include the steps, what happened, and your plugin and DSH versions. For questions and feature ideas, use [Discussions](https://github.com/sizhe03/dsh-muse-media/discussions).
 
 [Report an issue](https://github.com/sizhe03/dsh-muse-media/issues/new/choose) · [Security](SECURITY.md) · [Design](docs/DESIGN.md) · [Contributing](CONTRIBUTING.md#development-and-releases) · [Credits](THIRD_PARTY_NOTICES.md) · [MIT license](LICENSE)

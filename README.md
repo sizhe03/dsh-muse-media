@@ -15,9 +15,22 @@
 
 ## 安装与登录
 
-1. 在 DSH 插件市场搜索 **Muse 媒体** 并安装。如果搜索不到，在市场中添加 [Muse 插件索引](https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json) 后刷新。
-2. 打开 **设置 → Muse → 新增账号 → 打开登录窗口**，在弹出的浏览器里登录自己的 Muse 账号。
-3. 回到 DSH，试试「用 Muse 画一只青釉咖啡杯，白色背景」。每次生成会消耗该 Muse 账号的额度。插件使用本机的 Chrome、Chromium 或 Edge。
+1. 在 DSH 插件市场搜索 **Muse 媒体** 并安装。
+2. 打开 **设置 → Muse**，点 **新增账号**，再在账号行点 **打开登录窗口**。在弹出的浏览器里登录自己的 Muse 账号。
+3. 回到设置页，等账号显示 **可用**。如果状态还没更新，点 **验证登录**。
+
+<details>
+<summary>市场里搜不到 Muse？复制这个索引地址</summary>
+
+把下面的完整地址添加到 DSH 插件市场的索引列表，刷新后再次搜索 **Muse 媒体**。
+
+```text
+https://raw.githubusercontent.com/sizhe03/dsh-muse-media/main/market-index.json
+```
+
+</details>
+
+**第一次生成**可以直接在 DSH 对话里说「用 Muse 画一只青釉咖啡杯，白色背景」。想做视频，可以附上杯子的图片，再说「用 Muse 以这张图为首帧，做一段 4 秒视频，镜头缓慢推近杯口」。每次生成使用所选 Muse 账号的额度，插件会调用本机安装的 Chrome、Chromium 或 Edge。
 
 适用版本见 [插件清单](package.json)。通过市场安装后，可在 DSH 中接收更新。本地开发也可以通过 [npm](https://www.npmjs.com/package/dsh-muse-media) 安装。
 
@@ -80,6 +93,6 @@ npm install dsh-muse-media
 
 ## 帮助与反馈
 
-尺寸偏小、内容被拒、账号所在地区无法生成视频，或发送后结果未知时，先按现象查[排查指南](docs/TROUBLESHOOTING.md#中文)。报告问题时附上插件版本和页面提示即可，账号凭据请留在本机。
+尺寸偏小、内容被拒、账号所在地区无法生成视频，或发送后结果未知时，先按现象查[排查指南](docs/TROUBLESHOOTING.md#中文)。报告故障时请附上操作步骤、实际结果，以及插件和 DSH 的版本。使用疑问和功能建议可发到 [Discussions](https://github.com/sizhe03/dsh-muse-media/discussions)。
 
 [提交问题](https://github.com/sizhe03/dsh-muse-media/issues/new/choose) · [安全说明](SECURITY.md) · [设计说明](docs/DESIGN.md) · [参与贡献](CONTRIBUTING.md) · [第三方来源](THIRD_PARTY_NOTICES.md) · [MIT 许可](LICENSE)

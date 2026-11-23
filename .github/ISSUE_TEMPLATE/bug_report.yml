@@ -1,85 +1,43 @@
-name: 报告问题
-description: 插件行为异常、任务失败、或界面显示不对
+name: 报告故障 · Bug report
+description: 生图、视频、文件或设置出现异常 · Report a problem with generation, saved files or settings.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        请写下出问题的操作，以及你在 Muse 页面和插件里分别看到的结果。涉及生成文件时，请注明记录是否标为「仅预览」。
+        使用方法和功能建议可以发到 [Discussions](https://github.com/sizhe03/dsh-muse-media/discussions)。请从截图和日志里隐去账号、私人对话链接和凭据。
 
-        ⚠️ 不要贴账号密码、`.npmrc` 里的 token、或 Muse 的 cookie / 会话 token。
+        For questions or ideas, use Discussions. Redact account details, private conversation links and credentials from screenshots and logs.
 
   - type: textarea
     id: what-happened
     attributes:
-      label: 发生了什么
-      description: 你期望的结果，和实际看到的结果。
+      label: 看到的结果 · What happened?
+      description: 写明你想完成什么、实际看到什么，以及页面提示（如有）。Include your expected result, the actual result and any message shown.
       placeholder: |
-        期望：生成一段 5 秒视频
-        实际：任务停在「已发送」，13 分钟后超时
+        例：生成记录显示「仅预览」，但同一条 Muse 对话里可以下载大图。
+        Example — History shows “Preview only”, and the same Muse conversation has a full-size download.
     validations:
       required: true
 
   - type: textarea
     id: steps
     attributes:
-      label: 复现步骤
-      description: 能复现的最小条件。如果能稳定复现，或者换个说法就成功，请写清差异。
-      placeholder: |
-        1. 设置 → Muse，acc-01 显示可用
-        2. 对话里要求生成视频，提示词：……
-        3. 等待约 13 分钟后报超时
+      label: 操作步骤 · Steps taken
+      description: 从哪个页面或按钮开始？出现过一次也可以报告。A one-off incident is worth reporting. Include the page or button you started from.
+    validations:
+      required: true
+
+  - type: input
+    id: versions
+    attributes:
+      label: 插件与宿主版本 · Plugin and DSH versions
+      placeholder: "Muse x.y.z / DSH x.y.z"
     validations:
       required: true
 
   - type: textarea
     id: diagnostics
     attributes:
-      label: 诊断信息
-      description: 设置 → Muse → 设置 → 诊断 里的内容。
-      render: text
-    validations:
-      required: false
-
-  - type: input
-    id: harness
-    attributes:
-      label: DeepSeek Harness 版本
-      placeholder: 0.2.2-rc.5
-    validations:
-      required: true
-
-  - type: input
-    id: plugin
-    attributes:
-      label: 插件版本
-      placeholder: 1.0.1
-    validations:
-      required: true
-
-  - type: input
-    id: chrome
-    attributes:
-      label: Chrome / Chromium / Edge 版本
-      placeholder: 157.0.0.0
-    validations:
-      required: true
-
-  - type: dropdown
-    id: frequency
-    attributes:
-      label: 出现频率
-      options:
-        - 每次必现
-        - 偶尔出现
-        - 只出现过一次
-    validations:
-      required: true
-
-  - type: textarea
-    id: extra
-    attributes:
-      label: 其他线索
-      description: 最近有没有改过设置？同期有没有别的任务在跑？控制台有没有报错？
-    validations:
-      required: false
+      label: 其他线索（选填）· Additional details (optional)
+      description: 可附浏览器版本、出现频率，或「设置 → Muse → 设置 → 诊断」里的相关信息。Include the browser version, frequency or relevant details from Settings → Muse → Settings → Diagnostics.

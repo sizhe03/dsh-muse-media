@@ -1,8 +1,11 @@
 blank_issues_enabled: true
 contact_links:
-  - name: npm 包页面
-    url: https://www.npmjs.com/package/dsh-muse-media
-    about: 版本历史、安装命令、已发布的说明文档
-  - name: Muse 官方
-    url: https://muse.ai
-    about: 账号、额度、生成质量等上游问题
+  - name: 使用排查 · Troubleshooting
+    url: https://github.com/sizhe03/dsh-muse-media/blob/main/docs/TROUBLESHOOTING.md
+    about: 原图、额度、地区限制和发送结果 · Saved files, allowance, region restrictions and unknown outcomes.
+  - name: 使用提问与建议 · Questions and ideas
+    url: https://github.com/sizhe03/dsh-muse-media/discussions
+    about: 讨论使用方法或想要的功能 · Ask how to use the plugin or suggest a feature.
+  - name: 安全反馈 · Security reports
+    url: https://github.com/sizhe03/dsh-muse-media/security/policy
+    about: 查看私密报告方式 · Find the private reporting channel.
