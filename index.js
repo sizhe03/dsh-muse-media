@@ -27,6 +27,7 @@ import {
   mkdirSync,
   createReadStream,
   statSync,
+  lstatSync,
   writeFileSync,
   existsSync,
   readFileSync,
@@ -564,6 +565,58 @@ class MuseRuntime {
     } catch (error) {
       return { ok: false, dir, command, error: error instanceof Error ? error.message : String(error) };
     }
+  }
+
+  async revealTaskFile(taskId) {
+    const task = this.#tasks.get(taskId);
+    const name = task?.media && basename(task.media);
+    if (!name || name === "." || name === "..") throw new Error("这条生成记录没有已保存的媒体文件。");
+    const dir = this.mediaDir();
+    const file = join(dir, name);
+    if (!lstatSync(file, { throwIfNoEntry: false })?.isFile()) {
+      throw new Error("本地文件已移动或清理。若记录中有 Muse 对话，可从那里重新下载。");
+    }
+    if (process.platform === "win32") {
+      // Explorer /select can lose the selection while a new folder view is loading.
+      // Ask the loaded Shell view to select the item and confirm it before reporting success.
+      const script = `
+        $ErrorActionPreference = 'Stop'
+        $file = $env:MUSE_REVEAL_FILE
+        $dir = [IO.Path]::GetDirectoryName($file)
+        $shell = New-Object -ComObject Shell.Application
+        $shell.Open($dir)
+        for ($i = 0; $i -lt 50; $i++) {
+          foreach ($window in $shell.Windows()) {
+            try {
+              $view = $window.Document
+              if ($view.Folder.Self.Path -ne $dir) { continue }
+              $item = $view.Folder.ParseName([IO.Path]::GetFileName($file))
+              if ($null -eq $item) { continue }
+              $view.SelectItem($item, 29)
+              if ($view.SelectedItems().Item(0).Path -eq $file) { exit 0 }
+            } catch { continue }
+          }
+          Start-Sleep -Milliseconds 150
+        }
+        exit 1`;
+      const child = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-Command", script], {
+        windowsHide: true, stdio: "ignore", env: { ...process.env, MUSE_REVEAL_FILE: file },
+      });
+      await new Promise((resolve, reject) => {
+        child.once("error", reject);
+        child.once("exit", code => code === 0 ? resolve() : reject(new Error("资源管理器未能选中文件，可展开记录查看完整路径。")));
+      });
+      return { ok: true, file };
+    }
+    const mac = process.platform === "darwin";
+    const child = spawn(mac ? "open" : "xdg-open", mac ? ["-R", file] : [dir],
+      { detached: true, stdio: "ignore" });
+    await new Promise((resolve, reject) => {
+      child.once("error", reject);
+      child.once("spawn", resolve);
+    });
+    child.unref();
+    return { ok: true, file };
   }
 
   /**
@@ -2506,6 +2559,8 @@ class MuseRuntime {
           at: task.createdAt,
           durationMs: task.durationMs,
           media: task.media === undefined ? undefined : basename(task.media),
+          filePath: task.media && join(this.mediaDir(), basename(task.media)),
+          threadUrl: museThreadUrl(task.threadUrl),
           quotaBefore: task.quotaBefore,
           quotaAfter: task.quotaAfter,
           note: task.note,
@@ -3114,6 +3169,7 @@ function imageTool(runtime) {
       schema: {
         type: "object",
         properties: {
+          path: { type: "string" },
           previewOnly: { type: "boolean" },
           threadUrl: { type: "string" },
           attachment: {
@@ -3153,7 +3209,8 @@ function imageTool(runtime) {
               ` · ${String(value.width ?? "?")}×${String(value.height ?? "?")} · ` +
               `账号 ${String(value.account ?? "?")} · ${String(value.seconds ?? "?")} 秒 · ` +
               `任务 ${String(value.taskId ?? "?")}` +
-              (value.accountReason === undefined ? "" : `\n${String(value.accountReason)}`),
+              (value.accountReason === undefined ? "" : `\n${String(value.accountReason)}`) +
+              (value.path ? `\n本地文件：${value.path}` : ""),
           },
         ];
         if (asRecord(value.attachment).attachmentId !== undefined) {
@@ -3189,6 +3246,7 @@ function imageTool(runtime) {
       const attachment = await runtime.persistImage(result, size);
       return {
         attachment,
+        path: result.path,
         previewOnly: result.media.previewOnly === true,
         ...(result.media.previewOnly && result.media.threadUrl ? { threadUrl: result.media.threadUrl } : {}),
         width: result.media.width,
@@ -3682,6 +3740,8 @@ export function apply(ctx, config) {
                 case "open-browser": {
                   return json(res, 200, await runtime.openBrowser(accountId));
                 }
+                case "reveal-task-file":
+                  return json(res, 200, await runtime.revealTaskFile(nonEmpty(asRecord(body).taskId)));
                 case "reveal-media":
                   return json(res, 200, runtime.revealMediaDir());
                 case "add":

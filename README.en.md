@@ -49,7 +49,7 @@ Both generation tools accept `promptSource` to reuse a user-authored brief from 
 Three panes, each answering one question:
 
 - **Accounts** shows account status and weekly usage. Select an account name to expand its controls or use Refresh to read usage.
-- **History** filters recent generations by media type. Expand a record to preview its media and see the duration and before-and-after usage readings when available.
+- **History** filters recent generations by media type. Use **Show in folder** to locate the saved file, or download the image or video directly. A preview-only record downloads the preview and links to its original Muse conversation when available. Expand the record for its full local path, preview, duration and usage readings.
 - **Settings** groups generation preferences, browser options, timeouts and local storage. Drafts survive tab switches. Select Save to apply them.
 
 The pill beside the composer shows `Muse · 25% weekly · acc-01`; hover it for the plan, reset date, reading time, and which account the figure belongs to.

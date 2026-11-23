@@ -116,6 +116,12 @@ window.__ModuleLoader__.load({
       "settings.pendingChanges": "有未保存的更改",
       "settings.emptyAccount": "添加 Muse 账号后，打开登录窗口完成首次登录。",
       "settings.mediaMissing": "媒体文件不可用",
+      "settings.locateFile": "打开文件所在位置",
+      "settings.filePath": "本地文件",
+      "settings.saveImage": "下载图片",
+      "settings.saveVideo": "下载视频",
+      "settings.savePreview": "下载预览图",
+      "settings.sourceChat": "打开 Muse 原对话",
       "settings.updated": "额度更新",
       "settings.historyCount": "最近 {count} 条",
       "pill.label": "Muse",
@@ -282,6 +288,12 @@ window.__ModuleLoader__.load({
       "settings.pendingChanges": "Unsaved changes",
       "settings.emptyAccount": "Add a Muse account, then open its browser to sign in.",
       "settings.mediaMissing": "Media unavailable",
+      "settings.locateFile": "Show in folder",
+      "settings.filePath": "Local file",
+      "settings.saveImage": "Download image",
+      "settings.saveVideo": "Download video",
+      "settings.savePreview": "Download preview",
+      "settings.sourceChat": "Open Muse conversation",
       "settings.updated": "Usage updated",
       "settings.historyCount": "{count} recent tasks",
       "pill.label": "Muse",
@@ -615,6 +627,9 @@ window.__ModuleLoader__.load({
 .muse-record-copy{flex:1;display:grid;gap:4px;min-width:0;}
 .muse-record-head .muse-state{flex:none;}
 .muse-record-toggle[aria-expanded="false"] strong{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.muse-record-actions{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;}
+.muse-record-actions a,.muse-record-actions button{font:inherit;font-size:12px;color:var(--muse-sub);text-decoration:underline;text-underline-offset:3px;}
+.muse-record-facts dd{user-select:text;}
 .muse-record-facts{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;padding-inline-start:52px;font-size:12px;}
 .muse-record-facts dt{color:var(--muse-sub);}.muse-record-facts dd{overflow-wrap:anywhere;font-variant-numeric:tabular-nums;}
 .muse-preview{padding-inline-start:52px;display:grid;gap:8px;justify-items:start;}
@@ -1081,6 +1096,18 @@ window.__ModuleLoader__.load({
     function HistoryRecord({ task, t, locale }) {
       const [open, setOpen] = useState(false);
       const [failed, setFailed] = useState(false);
+      const [locating, setLocating] = useState(false);
+      const [locationError, setLocationError] = useState("");
+      async function revealFile() {
+        setLocating(true);
+        setLocationError("");
+        try {
+          const result = await fetchJson(ACTION_PATH, { method: "POST", headers: { "content-type": "application/json" },
+            body: JSON.stringify({ action: "reveal-task-file", taskId: task.id }) });
+          if (!result.ok) throw new Error(result.error || t("settings.mediaMissing"));
+        } catch (error) { setLocationError(error.message); }
+        finally { setLocating(false); }
+      }
       const kind = t("settings." + (task.kind === "video" ? "video" : "image"));
       const title = task.prompt || task.media || kind;
       const meta = [kind, task.account, relativeTime(task.at, locale)].filter(Boolean);
@@ -1091,6 +1118,7 @@ window.__ModuleLoader__.load({
       if (Number.isFinite(task.quotaBefore) && Number.isFinite(task.quotaAfter)) {
         details.push([t("settings.weeklyReadings"), task.quotaBefore + "% → " + task.quotaAfter + "%"]);
       }
+      if (task.filePath) details.push([t("settings.filePath"), task.filePath]);
       if (task.references?.length) details.push([t("settings.refs"), task.references.join("、")]);
       const states = { delivered: "delivered", failed: "stateFailed", unknown: "stateUnknown", "generated-unsaved": "unsaved" };
       const summary = [
@@ -1108,6 +1136,14 @@ window.__ModuleLoader__.load({
             : h("div", { className: "muse-record-summary" }, ...summary),
           h("span", { className: "muse-state", "data-tone": task.previewOnly ? "warn" : task.state === "delivered" ? "ok" : task.state === "failed" ? "bad" : "warn" },
             task.previewOnly ? (String(locale).startsWith("zh") ? "仅预览" : "Preview only") : t("settings." + (states[task.state] || "stateUnknown")))),
+        (task.media || task.threadUrl) && h("div", { className: "muse-record-actions" },
+          task.media && h("button", { type: "button", className: "muse-text-btn", onClick: revealFile,
+            disabled: locating, title: task.filePath }, t("settings.locateFile")),
+          task.media && !failed && h("a", { href: MEDIA_BASE + encodeURIComponent(task.media), download: task.media },
+            t(task.previewOnly ? "settings.savePreview" : task.kind === "video" ? "settings.saveVideo" : "settings.saveImage")),
+          task.threadUrl && (task.previewOnly || open || locationError) && h("a", { href: task.threadUrl,
+            target: "_blank", rel: "noopener noreferrer", title: task.account }, t("settings.sourceChat"))),
+        locationError && h("p", { className: "muse-warning", role: "alert" }, locationError),
         task.state !== "delivered" && task.note && h("p", { className: "muse-warning" }, task.note),
         open && details.length > 0 && h("dl", { className: "muse-record-facts" },
           details.map(([label, value]) => h(React.Fragment, { key: label }, h("dt", null, label), h("dd", null, value)))),

@@ -208,7 +208,23 @@ test("preview status survives the tool renderer and task journal", async (t) => 
   assert.equal(result.previewOnly, true);
   assert.equal(result.threadUrl, url);
   assert.equal(f.tasks()[0].previewOnly, true);
+  assert.equal(result.path, f.tasks()[0].media);
+  assert.ok(tool.output.render({}, result)[0].text.includes(result.path));
   assert.match(tool.output.render({}, result)[0].text, /仅取到预览.*\/thread\/preview-only/);
+});
+
+test("locating a removed file reports the missing task output without accepting a caller-supplied path", async (t) => {
+  const f = fixture(t);
+  f.page("waitMedia", async () => image);
+  const first = await f.draw();
+  rmSync(first.path);
+  const missing = await f.picker("A", "reveal-task-file", { taskId: first.taskId, file: f.root });
+  assert.equal(missing.ok, false);
+  assert.match(missing.error, /移动或清理/);
+  assert.equal(missing.snapshot.history[0].filePath, first.path);
+  const unknown = await f.picker("A", "reveal-task-file", { taskId: "missing", path: f.root });
+  assert.equal(unknown.ok, false);
+  assert.match(unknown.error, /没有已保存/);
 });
 
 const sourceBrief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
