@@ -2915,10 +2915,70 @@ const GENERATION_BRIEF_GUIDANCE =
   "跨模型对比或续问其他模型时，沿用用户最初的完整生成要求，并纳入后续明确修改。请勿用之前某个工具的摘要替代原文。" +
   "size 等单独参数不能替代正文里的交付规格；上游能否满足这些规格需以成品为准。";
 
+const BRIEF_REFERENCE_HELP =
+  "用户给出了成段生成要求时，尤其是续问其他模型或比较结果，优先用 promptSource 引用原文。只传起始、结束短句，不重写正文。";
+
+const BRIEF_REFERENCE_FIELDS = {
+  promptSource: {
+    type: "object",
+    description: "当前 DSH 会话中用户亲写的生成要求。用两个逐字摘录的短句圈定范围（含首尾），可引用上一轮或更早的用户消息。" +
+      "选择与生成有关的范围，保留开头的用途和末尾的交付规格。不要引用模型、工具输出或无关聊天。与 prompt 二选一。",
+    properties: {
+      start: { type: "string", description: "原文开头的连续字符，含原标点，不加省略号。" },
+      end: { type: "string", description: "原文结尾的连续字符，含原标点，不加省略号。" },
+    },
+    required: ["start", "end"], additionalProperties: false,
+  },
+  promptAmendment: {
+    type: "string", description: "只在引用原文时使用。如用户明确追加修改，逐字填写这部分，附在原文后。否则省略。",
+  },
+};
+
+function generationBrief(args, exec) {
+  const invalid = (message) => new MuseFailure(message, { code: "INVALID_ARGS", kind: FAILURE.INVALID });
+  if (args.promptSource === undefined) {
+    if (args.promptAmendment !== undefined || typeof args.prompt !== "string" || !args.prompt.trim()) {
+      throw invalid("请提供完整 prompt，或用 promptSource 指定用户原文。追加修改须与原文引用一起使用。");
+    }
+    return args.prompt;
+  }
+
+  const { start, end } = asRecord(args.promptSource);
+  if (args.prompt !== undefined || !nonEmpty(start) || !nonEmpty(end) ||
+      (args.promptAmendment !== undefined && typeof args.promptAmendment !== "string")) {
+    throw invalid("引用生成原文时，请只填 promptSource 的首尾短句，以及用户明确追加的修改。");
+  }
+  const session = exec?.agent?.session;
+  if (typeof session?.deriveMessages !== "function") throw invalid("当前调用无法读取会话原文，请用 prompt 逐字传入完整要求。");
+  let selected;
+  for (const message of session.deriveMessages()) {
+    if (message.role !== "user" || message.source?.kind !== "user") continue;
+    for (const block of message.content) {
+      if (block.type !== "text" || typeof block.text !== "string") continue;
+      const text = block.text;
+      const first = text.indexOf(start);
+      if (first < 0) continue;
+      // Allow overlapping anchors, including a short brief quoted in full twice.
+      const minimumEnd = first + Math.max(0, start.length - end.length);
+      const last = text.indexOf(end, minimumEnd);
+      if (last < 0) continue;
+      const nextStart = text.indexOf(start, first + 1);
+      const nextEnd = text.indexOf(end, last + 1);
+      if (selected !== undefined || nextEnd >= 0 ||
+          (nextStart >= 0 && nextStart + start.length <= last + end.length && nextStart <= last)) {
+        throw invalid("首尾短句对应多个原文范围，请选更具体的短句，或逐字传入完整 prompt。");
+      }
+      selected = text.slice(first, last + end.length);
+    }
+  }
+  if (selected === undefined) throw invalid("未在当前会话的用户正文中找到这对首尾短句，请核对原文标点及范围。");
+  return args.promptAmendment?.trim() ? selected + "\n\n" + args.promptAmendment : selected;
+}
+
 function imageTool(runtime) {
   return {
     name: "muse_draw_image",
-    description:
+    description: BRIEF_REFERENCE_HELP +
       "用你自己的一个 Muse 账号生成一张图片（文生图；传 image 就是带参考图的图生图）。" +
       "插件通过 CDP 驱动本机 Chrome 操作 muse.ai 网页，每次生成真实消耗该账号的免费周额度。" +
       "生成要几十秒，工具会一直等到出图或失败；同一个提示词两次的结果不同（上游没有种子）。" +
@@ -2931,6 +2991,7 @@ function imageTool(runtime) {
     parameters: {
       type: "object",
       properties: {
+        ...BRIEF_REFERENCE_FIELDS,
         prompt: {
           type: "string",
           description: GENERATION_BRIEF_GUIDANCE + "用户只给简短创意时，可补充主体、构图和光线。",
@@ -2948,7 +3009,7 @@ function imageTool(runtime) {
             "或对话里附件的 attachmentId（sha256:…）。提交前会确认每一张都上传完成；少一张就不提交。",
         },
       },
-      required: ["prompt"],
+      required: [],
       additionalProperties: false,
     },
     output: {
@@ -3003,8 +3064,9 @@ function imageTool(runtime) {
     // Computed from the stages this tool actually runs, so the Host never gives up
     // before the plugin does. See `generationBudget`.
     timeoutMs: toolTimeout(runtime, "image"),
-    async execute(args) {
+    async execute(args, exec) {
       const record = asRecord(args);
+      const brief = generationBrief(record, exec);
       const startedAt = Date.now();
       const size = nonEmpty(record.size) ?? "1:1";
       if (!IMAGE_SIZE.includes(size)) {
@@ -3018,8 +3080,8 @@ function imageTool(runtime) {
       // prompt as an explicit instruction rather than being silently dropped.
       const prompt =
         size === "1:1"
-          ? String(record.prompt)
-          : `${String(record.prompt)}\n\n(Preferred aspect ratio: ${size})`;
+          ? brief
+          : `${brief}\n\n(Preferred aspect ratio: ${size})`;
 
       const result = await runtime.runMediaTask({ kind: "image", prompt, references });
       const seconds = (Date.now() - startedAt) / 1000;
@@ -3045,7 +3107,7 @@ function imageTool(runtime) {
 function videoTool(runtime) {
   return {
     name: "muse_draw_video",
-    description:
+    description: BRIEF_REFERENCE_HELP +
       "用你自己 Muse 账号的额度生成一段短视频（文生视频；传 image 就是带参考图的图生视频）。" +
       "Muse 没有独立的视频模式：界面上只有一个对话框，「生成视频」这件事完全靠提示词表达，" +
       "所以时长、镜头、动作都要写进 prompt。" +
@@ -3066,6 +3128,7 @@ function videoTool(runtime) {
     parameters: {
       type: "object",
       properties: {
+        ...BRIEF_REFERENCE_FIELDS,
         prompt: {
           type: "string",
           description: GENERATION_BRIEF_GUIDANCE + "保留时长、首帧、动作与镜头要求。",
@@ -3097,7 +3160,7 @@ function videoTool(runtime) {
           description: "期望时长（秒），可选。作为提示词的一部分提交，上游可能不遵循。",
         },
       },
-      required: ["prompt"],
+      required: [],
       additionalProperties: false,
     },
     output: {
@@ -3139,8 +3202,9 @@ function videoTool(runtime) {
     },
     // See `generationBudget`: video spends far longer in the media wait.
     timeoutMs: toolTimeout(runtime, "video"),
-    async execute(args) {
+    async execute(args, exec) {
       const record = asRecord(args);
+      const brief = generationBrief(record, exec);
       const startedAt = Date.now();
       const seconds = record.seconds;
       if (seconds !== undefined && seconds !== null) {
@@ -3153,7 +3217,7 @@ function videoTool(runtime) {
       if (size !== "16:9") hints.push(`Preferred aspect ratio: ${size}`);
       if (typeof seconds === "number") hints.push(`Target duration: ${Math.round(seconds)} seconds`);
       const prompt =
-        hints.length === 0 ? String(record.prompt) : `${String(record.prompt)}\n\n(${hints.join("; ")})`;
+        hints.length === 0 ? brief : `${brief}\n\n(${hints.join("; ")})`;
 
       const result = await runtime.runMediaTask({
         kind: "video",

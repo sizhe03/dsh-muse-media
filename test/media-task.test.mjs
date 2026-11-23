@@ -54,7 +54,7 @@ function fixture(t, config = {}) {
     rmSync(home, { recursive: true, force: true });
   });
   return {
-    state, root, page,
+    state, root, page, registry,
     draw: (prompt = "test") => registry.get("muse_draw_image").execute({ prompt }),
     video: () => registry.get("muse_draw_video").execute({ prompt: "test" }),
     quota: () => registry.get("muse_quota").execute({}),
@@ -79,6 +79,48 @@ for (const enabled of [false, true]) {
     assert.equal(expected, written);
   });
 }
+
+const sourceBrief = "为频道 @audio88 生成头像。4096 × 4096，PNG，sRGB。\n\n烟紫卡带。保留完整方图。";
+const promptSource = { start: "为频道 @audio88", end: "保留完整方图。" };
+const human = (text) => ({ role: "user", source: { kind: "user" }, content: [{ type: "text", text }] });
+const callContext = (...messages) => ({ agent: { session: { deriveMessages: () => messages } } });
+
+for (const kind of ["image", "video"]) {
+  test(`${kind} resolves a user-selected range before entering the composer`, async (t) => {
+    const f = fixture(t, { independentGeneration: false });
+    const context = callContext(
+      human("其他说明。\n" + sourceBrief + "\n不要转发这行。"),
+      { ...human(sourceBrief), source: { kind: "plugin" } },
+      { ...human(sourceBrief), role: "assistant" },
+      human("另外两个模型呢？这次用蓝色。"),
+    );
+    let outgoing;
+    f.page("setPrompt", async (text) => {
+      outgoing = text;
+      throw new Error("offline stop before submission");
+    });
+    await assert.rejects(f.registry.get("muse_draw_" + kind).execute({ promptSource, promptAmendment: "这次用蓝色。" }, context));
+    assert.equal(outgoing, sourceBrief + "\n\n这次用蓝色。");
+    assert.equal(f.state.sends, 0);
+  });
+}
+
+test("an invalid or ambiguous source never creates a task", async (t) => {
+  const f = fixture(t);
+  f.page("setPrompt", async () => assert.fail("invalid source reached the composer"));
+  const exec = (args, ...messages) => f.registry.get("muse_draw_image").execute(args, callContext(...messages));
+  for (const [args, messages] of [
+    [{ promptSource }, [human(sourceBrief), human(sourceBrief)]],
+    [{ promptSource }, [human("缺少原文")]],
+    [{ promptSource }, [human(sourceBrief + "保留完整方图。")]],
+    [{ promptSource }, [human("为频道 @audio88"), human("保留完整方图。")]],
+    [{ promptSource }, [{ ...human(sourceBrief), source: { kind: "plugin" } }]],
+    [{ promptSource, prompt: "改写版" }, [human(sourceBrief)]],
+    [{ prompt: "正文", promptAmendment: "补充" }, [human(sourceBrief)]],
+    [{}, [human(sourceBrief)]],
+  ]) await assert.rejects(exec(args, ...messages), { code: "INVALID_ARGS" });
+  assert.equal(f.tasks().length, 0);
+});
 
 test("a failed post-delivery read cannot turn a cached percentage into a measured cost", async (t) => {
   const f = fixture(t);
@@ -146,6 +188,19 @@ for (const [code, reply, tool] of [
     assert.equal(f.state.sends, 1);
   });
 }
+
+test("a retrieval timeout after acceptance keeps the account and sends only once", async (t) => {
+  const f = fixture(t);
+  f.page("waitMedia", async () => {
+    throw Object.assign(new Error("等待生成结果超时"), { code: "MEDIA_TIMEOUT" });
+  });
+  await assert.rejects(f.draw(), { code: "OUTCOME_UNKNOWN" });
+  const [task] = f.tasks();
+  assert.equal(task.state, "unknown");
+  assert.equal(task.accountId, "acc-01");
+  assert.match(task.note, /Studio.*请先看该账号的 Muse 会话/);
+  assert.equal(f.state.sends, 1);
+});
 
 test("lost media retrieval after acceptance remains unknown", async (t) => {
   const f = fixture(t);

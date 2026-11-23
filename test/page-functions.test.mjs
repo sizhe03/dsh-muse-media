@@ -111,21 +111,47 @@ async function run(html, fn, ...args) {
 test("waitMedia waits past a sibling upload preview and delivers the assistant's bytes", async (t) => {
   if (handle === undefined) return t.skip("no Chrome on this machine");
   const baseline = await run("<body><main><textarea></textarea></main></body>", pageSnapshot);
-  const message = (role, label) =>
-    `<div class="group/msg"><div class="hatch-chat-groupable-bubble ${role}">${label}</div>` +
-    `<div data-testid="hatch-chat-attachment-presentation-image"><img src="data:image/png;base64,${Buffer.from(label).toString("base64")}"></div></div>`;
-  const append = (html) => handle.js(`document.querySelector('main').insertAdjacentHTML('beforeend', ${JSON.stringify(html)})`);
-  await append(message("chat-user-bubble", "reference"));
+  const [reference, preview, original] = await handle.js(`[1, 8, 64].map(size => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    return canvas.toDataURL('image/png');
+  })`);
+  const append = async (role, src) => {
+    const message = `<div class="group/msg"><div class="hatch-chat-groupable-bubble ${role}">sample</div>` +
+      `<div data-testid="hatch-chat-attachment-presentation-image"><img src="${src}"></div></div>`;
+    await handle.js(`document.querySelector('main').insertAdjacentHTML('beforeend', ${JSON.stringify(message)});
+      [...document.images].at(-1).decode()`);
+  };
+  await append("chat-user-bubble", reference);
   const page = new MusePage(handle);
   const snapshot = page.snapshot.bind(page);
   let samples = 0;
-  t.mock.method(page, "snapshot", async () => {
-    if (++samples === 2) await append(message("hatch-agent-bubble-bg", "generated"));
-    return snapshot();
+  t.mock.method(page, "snapshot", async (...args) => {
+    samples++;
+    if (samples === 2) await append("hatch-agent-bubble-bg", preview);
+    if (samples === 3) await handle.js(`document.images[1].src=${JSON.stringify(original)};document.images[1].decode()`);
+    return snapshot(...args);
   });
   const media = await page.waitMedia(baseline, { kind: "image", deadline: Date.now() + 5000 });
-  assert.equal(media.bytes.toString(), "generated");
-  assert.ok(samples >= 2);
+  assert.deepEqual(media.bytes, Buffer.from(original.split(",")[1], "base64"));
+  assert.equal(media.width, 64);
+  assert.ok(samples >= 4);
+});
+
+test("an undecodable 0×0 image stops at the media deadline", async (t) => {
+  const page = new MusePage({ closed: false });
+  const baseline = { agents: [], attachments: [], tail: "" };
+  let polls = 0;
+  t.mock.method(page, "snapshot", async () => {
+    if (++polls > 1) throw new Error("polled again after the deadline");
+    return { ...baseline, tail: "loading preview", attachments: [
+      { image: "blob:pending", video: "", testId: "image", width: 0, height: 0 },
+    ] };
+  });
+  const fetch = t.mock.method(page, "fetchMedia", () => assert.fail("fetched an undecoded image"));
+  await assert.rejects(page.waitMedia(baseline, { kind: "image", deadline: Date.now() + 65 }),
+    { code: "MEDIA_TIMEOUT", diagnosticTail: "loading preview" });
+  assert.equal(fetch.mock.callCount(), 0);
 });
 
 test("media send checks the whole composer, including edits of equal length", async (t) => {

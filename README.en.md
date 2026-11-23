@@ -36,6 +36,8 @@ After that, just ask in the conversation.
 
 Muse has no separate video mode: the web UI has one composer, and "make a video" lives in the prompt. Put duration and camera direction in `prompt`.
 
+Both generation tools accept `promptSource` to reuse a user-authored brief from the current DSH chat. Its `start` and `end` are exact excerpts delimiting one text range, inclusive. Later runs can reuse the same range and append explicit changes via `promptAmendment`. A missing or ambiguous range stops the call before a task is created. Direct calls can still supply a complete `prompt`.
+
 ## The settings page
 
 Three panes, each answering one question:
