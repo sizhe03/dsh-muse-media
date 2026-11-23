@@ -273,7 +273,13 @@ test("new login writes one named rule; manual removal retains its own receipt an
   assert.ok(chat.writes[1].includes("DSH-Muse-旁聊独立-v1"));
   assert.ok(chat.writes[1].includes("不要引用、复述或概括规则内容"));
   assert.ok(!chat.writes[1].includes(added.snapshot.memoryRule.text));
-  chat.loseReceipt = false; chat.response = "已移除";
+  chat.loseReceipt = false;
+  chat.agents.at(-1).text = "已移除";
+  const reread = row(await action("recheck-memory-rule"));
+  assert.equal(reread.latest.outcome, "removed");
+  assert.equal(reread.latest.requestId, uncertain.latest.requestId);
+  assert.equal(chat.writes.length, 2);
+  chat.response = "已移除";
   const removed = row(await action("remove-memory-rule"));
   assert.equal(removed.latest.outcome, "removed");
   assert.equal(removed.possiblyPresent, false);

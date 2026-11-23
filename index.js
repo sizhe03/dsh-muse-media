@@ -35,12 +35,13 @@ import {
   rmSync,
 } from "node:fs";
 import { join, extname, basename } from "node:path";
+import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
-import { MAIN_CHAT, RULE_NAME, RULE_TEXT, ruleMessage, readRuleReply } from "./lib/memory-rule.js";
+import { MAIN_CHAT, RULE_NAME, RULE_TEXT, ruleMessage, readRuleReply, readyRuleChat } from "./lib/memory-rule.js";
 import { AccountStore, TaskStore, ThreadLibrary, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
@@ -2622,10 +2623,18 @@ class MuseRuntime {
   async #applyMemoryRule(accountId, action, automatic) {
     const account = this.#accounts.get(accountId);
     if (!account) throw new Error("找不到这个账号。");
-    const prompt = ruleMessage(action);
+    const previous = account.memoryRule?.latest;
+    const recheck = action === "recheck";
+    if (recheck) {
+      if (previous?.outcome !== "unconfirmed") throw new Error("此账号没有待确认的规则操作。");
+      action = previous.action;
+    }
+    const requestId = recheck ? previous.requestId : randomUUID();
+    const prompt = ruleMessage(action, requestId);
     const lastConfirmed = account.memoryRule?.lastConfirmed;
     const previouslyPossible = account.memoryRule?.possiblyPresent === true;
-    const record = { action, at: Date.now(), automatic, outcome: "not-sent", reply: "" };
+    const record = recheck ? { ...previous, checkedAt: Date.now() } :
+      { action, requestId, at: Date.now(), automatic, outcome: "not-sent", reply: "" };
     const save = () => {
       const confirmed = ["set", "removed", "absent"].includes(record.outcome);
       this.#accounts.update(accountId, { autoRuleEligible: false, memoryRule: {
@@ -2633,18 +2642,29 @@ class MuseRuntime {
         possiblyPresent: confirmed ? record.outcome === "set" : previouslyPossible || (action === "set" && record.outcome === "unconfirmed"),
       } });
     };
-    save();
+    if (!recheck) save();
     try {
       await this.#browser.withPage(accountId, { url: MAIN_CHAT, visible: !this.settings().headlessAfterLogin,
         reuseOnly: automatic }, async raw => {
         const page = new MusePage(raw, this.#log);
         if ((await page.snapshot()).href !== MAIN_CHAT) await page.openThread({ url: MAIN_CHAT });
         else if (await page.waitReady() !== "ready") throw new Error("Muse 主聊天尚未就绪。");
-        const baseline = await page.snapshot();
-        if (baseline.href !== MAIN_CHAT || (await page.checkSession()).verdict !== "signed-in") throw new Error("无法确认已登录的 Muse 主聊天。");
-        const previousAction = account.memoryRule?.latest?.action;
+        const session = await page.checkSession();
+        if (session.verdict !== "signed-in") throw new Error("无法确认已登录的 Muse 主聊天。");
+        if (recheck) {
+          const result = await readRuleReply(page, prompt, action, Date.now() + 10_000, { legacy: !requestId });
+          record.delivered = record.delivered || result.delivered;
+          if (result.messageId) record.messageId = result.messageId;
+          record.outcome = result.outcome;
+          record.reply = result.reply || record.reply;
+          record.detail = result.detail;
+          record.legacyHistory = !requestId;
+          return;
+        }
+        const baseline = await readyRuleChat(page);
+        const previousAction = previous?.action;
         const ownDraft = ["set", "remove"].includes(previousAction) &&
-          baseline.composer.text === ruleMessage(previousAction);
+          baseline.composer.text === ruleMessage(previousAction, previous.requestId);
         if (baseline.stop || (baseline.composer.text && !ownDraft) || baseline.composer.attachments) {
           throw new Error("主聊天正在回复或有未发送的草稿。");
         }
@@ -2660,7 +2680,7 @@ class MuseRuntime {
           record.outcome = "not-sent";
           record.detail = send.reason;
         } else {
-          Object.assign(record, await readRuleReply(page, baseline, prompt, action, Date.now() + 60_000));
+          Object.assign(record, await readRuleReply(page, prompt, action, Date.now() + 60_000));
         }
       });
     } catch (error) {
@@ -3832,6 +3852,8 @@ export function apply(ctx, config) {
                   );
                   return json(res, 200, { ...verified, snapshot: runtime.snapshot() });
                 }
+                case "recheck-memory-rule":
+                  return json(res, 200, await runtime.changeMemoryRule(accountId, "recheck"));
                 case "set-memory-rule":
                 case "remove-memory-rule":
                   return json(res, 200, await runtime.changeMemoryRule(accountId, action === "set-memory-rule" ? "set" : "remove"));

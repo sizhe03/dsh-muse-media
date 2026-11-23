@@ -981,7 +981,7 @@ window.__ModuleLoader__.load({
             : "Removal identifies the rule by name and asks Muse not to repeat it. Existing chat messages remain.")));
     }
 
-    function AccountRow({ account, t, locale, busy, pending, onAction }) {
+    function AccountRow({ account, t, locale, busy, pending, pendingAccount, onAction }) {
       const [confirming, setConfirming] = useState(false);
       const statusText = t(`settings.status.${account.status}`);
       const statusTone =
@@ -1091,14 +1091,23 @@ window.__ModuleLoader__.load({
             !probe?.checkedAt && probeNode),
           probe?.note && h("p", { className: "muse-meta" }, probe.note),
           h("div", { className: "muse-card-actions" },
+            latest?.outcome === "unconfirmed" && button("recheck-memory-rule", zh ? "重新读取回执" : "Check chat receipt"),
             latest?.outcome !== "set" && button("set-memory-rule", latest ? (zh ? "重新设置规则" : "Set rule again") : (zh ? "设置规则" : "Set rule")),
             (canRemove || latest?.action === "remove" && latest.outcome === "unconfirmed") &&
               button("remove-memory-rule", zh ? "移除此规则" : "Remove this rule")),
+          pendingAccount === account.id && ["set-memory-rule", "remove-memory-rule", "recheck-memory-rule"].includes(pending) &&
+            h("p", { role: "status", className: "muse-meta" }, pending === "recheck-memory-rule"
+              ? (zh ? "正在主聊天中查找已有回执…" : "Checking main chat for an existing receipt…")
+              : (zh ? "正在处理规则请求，等待 Muse 主聊天回执…" : "Processing the rule request and waiting for Muse’s reply…")),
           latest && h("details", { className: "muse-rule-receipt" },
             h("summary", null, (zh ? "查看回执 · " : "View receipt · ") + new Date(latest.at).toLocaleString(locale)),
             h("p", null, ruleStatus(latest, zh)),
             h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, latest.reply ||
               (zh ? "未收到可确认的回复。" : "No attributable reply received.")),
+            latest.delivered && h("p", { className: "muse-meta" }, zh ? "主聊天中已看到规则请求。" : "Request found in main chat."),
+            latest.checkedAt && h("p", { className: "muse-meta" },
+              (zh ? "最近核对主聊天 · " : "Main chat checked · ") + new Date(latest.checkedAt).toLocaleString(locale)),
+            latest.legacyHistory && h("p", { className: "muse-meta" }, zh ? "旧请求没有编号，回执对应主聊天中可核对的操作，原点击是否送达仍待确认。" : "This older request had no ID. The receipt describes the operation found in main chat. Delivery of the original click is unknown."),
             latest.detail && h("p", { className: "muse-meta" }, latest.detail),
             confirmed && confirmed.at !== latest.at && h("div", { className: "muse-meta" },
               (zh ? "上次明确回执 · " : "Last confirmed status · ") + new Date(confirmed.at).toLocaleString(locale) +
@@ -1430,6 +1439,7 @@ window.__ModuleLoader__.load({
       const [snapshot, setSnapshot] = useState(undefined);
       const [label, setLabel] = useState("");
       const [pending, setPending] = useState(undefined);
+      const [pendingAccount, setPendingAccount] = useState(undefined);
       const [notice, setNotice] = useState(undefined);
       /** Account whose sign-in window is open and whose session is being watched. */
       const [watching, setWatching] = useState(undefined);
@@ -1546,6 +1556,7 @@ window.__ModuleLoader__.load({
       const runAction = useCallback(
         async (action, accountId, extra) => {
           readVersion.current++;
+          setPendingAccount(accountId);
           setPending(action);
           setNotice(undefined);
           try {
@@ -1802,6 +1813,7 @@ window.__ModuleLoader__.load({
                           locale,
                           busy,
                           pending,
+                          pendingAccount,
                           onAction: (action, accountId) => void runAction(action, accountId),
                         }),
                       ),
