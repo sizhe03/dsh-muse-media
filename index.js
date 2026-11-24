@@ -732,6 +732,43 @@ class MuseRuntime {
 
   /* ---------------- accounts ---------------- */
 
+  /**
+   * The account a request must use, or the ranked default.
+   *
+   * `requested` comes from the tool argument. When present it is authoritative: a request naming an account that does not exist, or exists
+   * but cannot be used right now, fails here instead of quietly running on a different account. Charging an account the user did not ask
+   * for is worse than refusing, because nothing in the result would reveal it.
+   */
+  accountForRequest(requested) {
+    const wanted = typeof requested === "string" ? requested.trim() : "";
+    if (wanted === "") return undefined;
+
+    const accounts = this.#accounts.list();
+    const match =
+      accounts.find((account) => account.id === wanted) ??
+      accounts.find((account) => account.label === wanted) ??
+      accounts.find((account) => account.label.toLowerCase() === wanted.toLowerCase());
+
+    if (match === undefined) {
+      const known = accounts.map((account) => `${account.label}（${account.id}）`).join("、") || "（没有账号）";
+      throw new MuseFailure(
+        `没有找到账号「${wanted}」。当前可用的是：${known}。`,
+        { code: "UNKNOWN_ACCOUNT", kind: FAILURE.INVALID },
+      );
+    }
+
+    const verdict = eligibility(match);
+    if (verdict.usable !== true) {
+      throw new MuseFailure(
+        `账号「${match.label}」当前不可用：${verdict.label}。` +
+          `要换号请省略 account 参数按额度顺序自动选，或先在设置页处理这个账号。`,
+        { code: "ACCOUNT_UNAVAILABLE", kind: FAILURE.INVALID },
+      );
+    }
+
+    return match;
+  }
+
   preferredAccount() {
     const selected = this.#accounts.selected();
     if (selected === undefined) {
@@ -1218,7 +1255,7 @@ class MuseRuntime {
    * whole attempt; the journal is written before the send, and every exit that
    * left a request possibly in flight records `unknown` and forbids a retry.
    */
-  async runMediaTask({ kind, prompt, references, continueFromTaskId, sessionId }) {
+  async runMediaTask({ kind, prompt, references, continueFromTaskId, sessionId, account }) {
     const config = this.settings();
     if (typeof prompt !== "string" || prompt.trim() === "") {
       throw new MuseFailure("prompt 必填，且必须是非空字符串。", {
@@ -1285,10 +1322,22 @@ class MuseRuntime {
         code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
       });
     } else {
-      const preferred = this.preferredAccount();
-      chosen = rankAccounts(this.#accounts.list(), {
-        preferredId: preferred.id, now: Date.now(),
-      }).ordered[0] ?? preferred;
+      /**
+       * A requested account wins over the ranking.
+       *
+       * The ranking exists because allowance expires; it is the right default but it is not an instruction. When a caller names an account,
+       * that name is the instruction, and accountForRequest has already refused anything unusable — so reaching here means the account is
+       * known and healthy, and using a different one would charge the wrong quota under a result that looks correct.
+       */
+      const requested = this.accountForRequest(account);
+      if (requested !== undefined) {
+        chosen = requested;
+      } else {
+        const preferred = this.preferredAccount();
+        chosen = rankAccounts(this.#accounts.list(), {
+          preferredId: preferred.id, now: Date.now(),
+        }).ordered[0] ?? preferred;
+      }
     }
 
     const task = this.#tasks.create({
@@ -3145,6 +3194,19 @@ const BRIEF_REFERENCE_HELP =
   "修改刚生成的图或视频时，把该作品返回的 taskId 填入 continueFromTaskId，提示词只写本次修改。多轮修改指向最新一版；作品不明确时先询问。全新创作省略此字段。" +
   "用户给出了成段生成要求时，尤其是续问其他模型或比较结果，优先用 promptSource 引用原文。只传起始、结束短句，不重写正文。";
 
+/**
+ * An optional account request, shared by all three tools.
+ *
+ * Accepts the account id or its label, because a label is what the settings page shows and what a user will say. Matching is exact: a
+ * near-miss is a mistake worth surfacing, not worth guessing at.
+ */
+const ACCOUNT_FIELD = {
+  type: "string",
+  description:
+    "指定本次使用的 Muse 账号，填账号 id 或标签。省略则按额度到期顺序自动选号。" +
+    "填了就必须用这个账号：不存在或当前不可用时直接报错，不会静默换成别的账号。",
+};
+
 const BRIEF_REFERENCE_FIELDS = {
   continueFromTaskId: { type: "string", description: "要续改的 Muse 作品的 taskId。使用原账号、原对话；新作品省略。" },
   promptSource: {
@@ -3239,6 +3301,7 @@ function imageTool(runtime) {
     parameters: {
       type: "object",
       properties: {
+        account: ACCOUNT_FIELD,
         ...BRIEF_REFERENCE_FIELDS,
         prompt: {
           type: "string",
@@ -3336,7 +3399,7 @@ function imageTool(runtime) {
           ? brief
           : `${brief}\n\n(Preferred aspect ratio: ${size})`;
 
-      const result = await runtime.runMediaTask({ kind: "image", prompt, references, continueFromTaskId: record.continueFromTaskId, sessionId: exec?.agent?.session?.id });
+      const result = await runtime.runMediaTask({ kind: "image", prompt, references, continueFromTaskId: record.continueFromTaskId, sessionId: exec?.agent?.session?.id, account: record.account });
       const seconds = (Date.now() - startedAt) / 1000;
       const attachment = await runtime.persistImage(result, size);
       return {
@@ -3384,6 +3447,7 @@ function videoTool(runtime) {
     parameters: {
       type: "object",
       properties: {
+        account: ACCOUNT_FIELD,
         ...BRIEF_REFERENCE_FIELDS,
         prompt: {
           type: "string",
@@ -3479,6 +3543,7 @@ function videoTool(runtime) {
         kind: "video",
         continueFromTaskId: record.continueFromTaskId,
         sessionId: exec?.agent?.session?.id,
+        account: record.account,
         prompt,
         // Several references are allowed, matching what the composer accepts. The
         // first is the starting frame; what Muse does with the rest is undocumented.
@@ -3538,7 +3603,8 @@ function quotaTool(runtime) {
       "这个数字只属于 Muse：其他已安装的生图或视频插件各有自己的额度，不受它影响。" +
       "这个查询会真实打开上游的额度面板，几十秒，但不消耗生成额度。" +
       "想知道「还能不能继续生图/生视频」时用它，不要每一轮都查。",
-    parameters: { type: "object", properties: {}, additionalProperties: false },
+    parameters: { type: "object", properties: {
+        account: ACCOUNT_FIELD,}, additionalProperties: false },
     output: {
       schema: {
         type: "object",
@@ -3564,8 +3630,14 @@ function quotaTool(runtime) {
       },
     },
     timeoutMs: 120_000,
-    async execute() {
-      const account = runtime.preferredAccount();
+    async execute(args) {
+      /**
+       * A named account wins here too.
+       *
+       * Reading the wrong account's allowance is a quiet failure: the numbers look plausible and the user has no way to tell they belong to
+       * someone else. A requested account is resolved the same way as for generation, so an unusable one is refused rather than substituted.
+       */
+      const account = runtime.accountForRequest(args?.account) ?? runtime.preferredAccount();
       const view = await runtime.quotaView({ accountId: account.id, force: false });
       /**
        * Two budgets, two sentences.
