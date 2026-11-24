@@ -41,7 +41,7 @@ import { spawn } from "node:child_process";
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
-import { MAIN_CHAT, RULE_NAME, RULE_TEXT, ruleMessage, readRuleReply, readyRuleChat } from "./lib/memory-rule.js";
+import { MAIN_CHAT, SIDE_CHAT_RULE, VIDEO_RULE, findVideoRequest, ruleMessage, readRuleReply, readyRuleChat } from "./lib/memory-rule.js";
 import { AccountStore, TaskStore, ThreadLibrary, ACCOUNT_STATUS, TASK_STATE } from "./lib/store.js";
 import {
   FAILURE,
@@ -133,6 +133,7 @@ const DEFAULTS = {
   showQuotaInComposer: true,
   debugPortBase: 19_220,
   autoSetMemoryRule: true,
+  autoSetVideoRule: true,
 };
 
 // Match old task transcripts when reopening a pre-migration generation. Never sent.
@@ -457,6 +458,7 @@ class MuseRuntime {
    */
   #clampSetting(key, raw) {
     const RULES = {
+      autoSetVideoRule: (value) => (typeof value === "boolean" ? value : undefined),
       autoSetMemoryRule: (value) => (typeof value === "boolean" ? value : undefined),
       headlessAfterLogin: (value) => (typeof value === "boolean" ? value : undefined),
       showQuotaInComposer: (value) => (typeof value === "boolean" ? value : undefined),
@@ -2467,7 +2469,8 @@ class MuseRuntime {
       /* housekeeping must not break the snapshot */
     }
     return {
-      memoryRule: { name: RULE_NAME, text: RULE_TEXT },
+      memoryRule: { name: SIDE_CHAT_RULE.name, text: SIDE_CHAT_RULE.text },
+      videoRule: { name: VIDEO_RULE.name, text: VIDEO_RULE.text },
       accounts: accounts.map((account) => {
         const verdict = eligibility(account);
         const cached = this.#quotaCache.get(account.id);
@@ -2571,6 +2574,7 @@ class MuseRuntime {
         maxAccountsPerTask: config.maxAccountsPerTask,
         showQuotaInComposer: config.showQuotaInComposer !== false,
         autoSetMemoryRule: config.autoSetMemoryRule === true,
+        autoSetVideoRule: config.autoSetVideoRule === true,
       },
       /** What the settings page cannot derive from the snapshot's other fields. */
       diagnostics: {
@@ -2600,46 +2604,49 @@ class MuseRuntime {
   // Called inside the page queue after the first verified sign-in. Existing rows
   // have no eligibility marker; a later verification cannot enroll them.
   async #firstLoginRule(accountId) {
-    if (!this.#accounts.get(accountId)?.autoRuleEligible) return;
-    if (!this.settings().autoSetMemoryRule) {
-      this.#accounts.update(accountId, { autoRuleEligible: false });
-      return;
+    for (const rule of [SIDE_CHAT_RULE, VIDEO_RULE]) {
+      if (!this.#accounts.get(accountId)?.[rule.eligible]) continue;
+      if (this.settings()[rule.setting] !== true) {
+        this.#accounts.update(accountId, { [rule.eligible]: false });
+        continue;
+      }
+      await this.#applyMemoryRule(accountId, "set", true, rule);
     }
-    await this.#applyMemoryRule(accountId, "set", true);
   }
 
   #manualRules = new Set();
 
-  async changeMemoryRule(accountId, action) {
+  async changeMemoryRule(accountId, action, rule = SIDE_CHAT_RULE) {
     if (this.#manualRules.has(accountId) || this.busy) throw new Error("页面正被占用，请稍后再操作。");
     this.#manualRules.add(accountId);
     try {
-      await this.runExclusive("Muse 旁聊规则", () => this.#applyMemoryRule(accountId, action, false), { accountId });
-      const receipt = this.#accounts.get(accountId).memoryRule.latest;
+      await this.runExclusive(rule.name, () => this.#applyMemoryRule(accountId, action, false, rule), { accountId });
+      const receipt = this.#accounts.get(accountId)[rule.state].latest;
       return { ok: true, receipt, snapshot: this.snapshot() };
     } finally { this.#manualRules.delete(accountId); }
   }
 
-  async #applyMemoryRule(accountId, action, automatic) {
+  async #applyMemoryRule(accountId, action, automatic, rule) {
     const account = this.#accounts.get(accountId);
     if (!account) throw new Error("找不到这个账号。");
-    const previous = account.memoryRule?.latest;
+    const previous = account[rule.state]?.latest;
     const recheck = action === "recheck";
-    if (recheck) {
+    const importReceipt = recheck && !previous && rule === VIDEO_RULE;
+    if (recheck && !importReceipt) {
       if (previous?.outcome !== "unconfirmed") throw new Error("此账号没有待确认的规则操作。");
       action = previous.action;
     }
-    const requestId = recheck ? previous.requestId : randomUUID();
-    const prompt = ruleMessage(action, requestId);
-    const lastConfirmed = account.memoryRule?.lastConfirmed;
-    const previouslyPossible = account.memoryRule?.possiblyPresent === true;
+    const requestId = recheck ? previous?.requestId : randomUUID();
+    const prompt = importReceipt ? undefined : (recheck && previous.importedPrompt) || ruleMessage(action, requestId, rule);
+    const lastConfirmed = account[rule.state]?.lastConfirmed;
+    const previouslyPossible = account[rule.state]?.possiblyPresent === true;
     const record = recheck ? { ...previous, checkedAt: Date.now() } :
       { action, requestId, at: Date.now(), automatic, outcome: "not-sent", reply: "" };
     const save = () => {
       const confirmed = ["set", "removed", "absent"].includes(record.outcome);
-      this.#accounts.update(accountId, { autoRuleEligible: false, memoryRule: {
-        name: RULE_NAME, latest: { ...record }, lastConfirmed: confirmed ? { ...record } : lastConfirmed,
-        possiblyPresent: confirmed ? record.outcome === "set" : previouslyPossible || (action === "set" && record.outcome === "unconfirmed"),
+      this.#accounts.update(accountId, { [rule.eligible]: false, [rule.state]: {
+        name: rule.name, latest: { ...record }, lastConfirmed: confirmed ? { ...record } : lastConfirmed,
+        possiblyPresent: confirmed ? record.outcome === "set" : previouslyPossible || (record.action === "set" && record.outcome === "unconfirmed"),
       } });
     };
     if (!recheck) save();
@@ -2652,23 +2659,30 @@ class MuseRuntime {
         const session = await page.checkSession();
         if (session.verdict !== "signed-in") throw new Error("无法确认已登录的 Muse 主聊天。");
         if (recheck) {
-          const result = await readRuleReply(page, prompt, action, Date.now() + 10_000, { legacy: !requestId });
+          if (importReceipt) {
+            const found = findVideoRequest(await readyRuleChat(page));
+            if (!found) throw new Error("当前主聊天中没有可核对的视频原片规则请求。");
+            Object.assign(record, { action: found.action, requestId: found.requestId,
+              importedPrompt: found.prompt, at: record.checkedAt, automatic: false, outcome: "unconfirmed" });
+          }
+          const result = await readRuleReply(page, record.importedPrompt ?? prompt, record.action,
+            Date.now() + 10_000, { legacy: !record.requestId });
           record.delivered = record.delivered || result.delivered;
           if (result.messageId) record.messageId = result.messageId;
           record.outcome = result.outcome;
           record.reply = result.reply || record.reply;
           record.detail = result.detail;
-          record.legacyHistory = !requestId;
+          record.legacyHistory = !record.requestId;
           return;
         }
         const baseline = await readyRuleChat(page);
         const previousAction = previous?.action;
         const ownDraft = ["set", "remove"].includes(previousAction) &&
-          baseline.composer.text === ruleMessage(previousAction, previous.requestId);
+          baseline.composer.text === ruleMessage(previousAction, previous.requestId, rule);
         if (baseline.stop || (baseline.composer.text && !ownDraft) || baseline.composer.attachments) {
           throw new Error("主聊天正在回复或有未发送的草稿。");
         }
-        if (automatic && !this.settings().autoSetMemoryRule) return;
+        if (automatic && this.settings()[rule.setting] !== true) return;
         await page.setPrompt(prompt);
         // Persist uncertainty before crossing the one-send boundary, including across a crash.
         record.outcome = "unconfirmed";
@@ -2684,6 +2698,7 @@ class MuseRuntime {
         }
       });
     } catch (error) {
+      if (importReceipt && !record.action) throw error;
       record.detail = error instanceof Error ? error.message : String(error);
     }
     save();
@@ -2795,8 +2810,9 @@ class MuseRuntime {
           verifiedAt: Date.now(),
         });
         const cleared = await this.#clearCooldownOnPanelEvidence(accountId);
-        if (this.#accounts.get(accountId)?.autoRuleEligible) {
-          await this.runExclusive("新账号旁聊规则", () => this.#firstLoginRule(accountId), { accountId });
+        const verifiedAccount = this.#accounts.get(accountId);
+        if (verifiedAccount?.autoRuleEligible || verifiedAccount?.autoVideoRuleEligible) {
+          await this.runExclusive("新账号长期规则", () => this.#firstLoginRule(accountId), { accountId });
         }
         return {
           ok: true,
@@ -3852,6 +3868,10 @@ export function apply(ctx, config) {
                   );
                   return json(res, 200, { ...verified, snapshot: runtime.snapshot() });
                 }
+                case "set-video-rule":
+                case "remove-video-rule":
+                case "recheck-video-rule":
+                  return json(res, 200, await runtime.changeMemoryRule(accountId, action.split("-")[0], VIDEO_RULE));
                 case "recheck-memory-rule":
                   return json(res, 200, await runtime.changeMemoryRule(accountId, "recheck"));
                 case "set-memory-rule":

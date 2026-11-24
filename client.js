@@ -965,23 +965,52 @@ window.__ModuleLoader__.load({
       return labels[receipt.outcome] || op;
     }
 
-    function RuleSettings({ snapshot, locale, pending, save }) {
+    function RuleSettings({ rule, title, description, enabled, locale, pending, save }) {
       const zh = String(locale).toLowerCase().startsWith("zh");
       return h("section", { className: "muse-foot" },
         h("label", { className: "muse-foot-row" },
-          h("strong", null, zh ? "为新账号自动设置旁聊独立规则（推荐）" : "Automatically set the side-chat rule for new accounts (recommended)"),
-          h("input", { type: "checkbox", checked: snapshot.settings.autoSetMemoryRule === true,
+          h("strong", null, title),
+          h("input", { type: "checkbox", checked: enabled === true,
             disabled: pending !== undefined, onChange: e => save(e.target.checked) })),
-        h("p", { className: "muse-meta" }, zh
-          ? "首次登录时向该账号的 Muse 主聊天发送一次，有助于减少旧作品干扰新创作。同一旁聊仍可续改。关闭只影响后续新账号。"
-          : "Send once in a new account’s main Muse chat to reduce carryover between works. Edits can still follow earlier turns in the same chat. Turning this off affects future accounts."),
+        h("p", { className: "muse-meta" }, description),
         h("details", null, h("summary", null, zh ? "查看将写入的完整规则" : "View the complete rule"),
-          h("p", null, snapshot.memoryRule.name), h("p", null, snapshot.memoryRule.text),
+          h("p", null, rule.name), h("p", null, rule.text),
           h("p", { className: "muse-meta" }, zh ? "移除时只引用规则名称，要求 Muse 不复述内容。主聊天中的历史消息会保留。"
             : "Removal identifies the rule by name and asks Muse not to repeat it. Existing chat messages remain.")));
     }
 
-    function AccountRow({ account, t, locale, busy, pending, pendingAccount, onAction }) {
+    function AccountRuleActions({ title, state, suffix, button, zh, locale, pending, importable }) {
+      const latest = state?.latest;
+      const confirmed = state?.lastConfirmed;
+      const canRemove = state?.possiblyPresent;
+      return h("section", null,
+        h("strong", null, title),
+        h("span", { className: "muse-meta" }, " · " + ruleStatus(latest, zh)),
+        h("div", { className: "muse-card-actions" },
+          (latest?.outcome === "unconfirmed" || importable && !latest) && button(`recheck-${suffix}`, zh ? "重新读取回执" : "Check chat receipt"),
+          latest?.outcome !== "set" && button(`set-${suffix}`, latest ? (zh ? "重新设置规则" : "Set rule again") : (zh ? "设置规则" : "Set rule")),
+          (canRemove || importable && !latest || latest?.action === "remove" && latest.outcome === "unconfirmed") &&
+            button(`remove-${suffix}`, zh ? "移除此规则" : "Remove this rule")),
+        [`set-${suffix}`, `remove-${suffix}`, `recheck-${suffix}`].includes(pending) &&
+          h("p", { role: "status", className: "muse-meta" }, pending === `recheck-${suffix}`
+            ? (zh ? "正在主聊天中查找已有回执…" : "Checking main chat for an existing receipt…")
+            : (zh ? "正在处理规则请求，等待 Muse 主聊天回执…" : "Processing the rule request and waiting for Muse’s reply…")),
+        latest && h("details", { className: "muse-rule-receipt" },
+          h("summary", null, (latest.importedPrompt ? (zh ? "从主聊天读取于 · " : "Read from main chat · ") : (zh ? "查看回执 · " : "View receipt · ")) + new Date(latest.at).toLocaleString(locale)),
+          h("p", null, ruleStatus(latest, zh)),
+          h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, latest.reply ||
+            (zh ? "未收到可确认的回复。" : "No attributable reply received.")),
+          latest.delivered && h("p", { className: "muse-meta" }, zh ? "主聊天中已看到规则请求。" : "Request found in main chat."),
+          latest.checkedAt && h("p", { className: "muse-meta" },
+            (zh ? "最近核对主聊天 · " : "Main chat checked · ") + new Date(latest.checkedAt).toLocaleString(locale)),
+          latest.legacyHistory && h("p", { className: "muse-meta" }, zh ? "旧请求没有编号，回执对应主聊天中可核对的操作，原点击是否送达仍待确认。" : "This older request had no ID. The receipt describes the operation found in main chat. Delivery of the original click is unknown."),
+          latest.detail && h("p", { className: "muse-meta" }, latest.detail),
+          confirmed && confirmed.at !== latest.at && h("div", { className: "muse-meta" },
+            (zh ? "上次明确回执 · " : "Last confirmed status · ") + new Date(confirmed.at).toLocaleString(locale) +
+            " · " + ruleStatus(confirmed, zh), h("p", null, confirmed.reply))));
+    }
+
+    function AccountRow({ account, t, locale, busy, pending, pendingAccount, onAction, hasVideoRule }) {
       const [confirming, setConfirming] = useState(false);
       const statusText = t(`settings.status.${account.status}`);
       const statusTone =
@@ -989,8 +1018,7 @@ window.__ModuleLoader__.load({
 
       const zh = String(locale).toLowerCase().startsWith("zh");
       const latest = account.memoryRule?.latest;
-      const confirmed = account.memoryRule?.lastConfirmed;
-      const canRemove = account.memoryRule?.possiblyPresent;
+      const rowPending = pendingAccount === account.id ? pending : undefined;
       const probe = account.probe;
       const probeNode =
         probe !== undefined && probe.checkedAt !== undefined
@@ -1090,28 +1118,10 @@ window.__ModuleLoader__.load({
             quota?.at && h("span", null, t("settings.updated") + " " + relativeTime(quota.at, locale)),
             !probe?.checkedAt && probeNode),
           probe?.note && h("p", { className: "muse-meta" }, probe.note),
-          h("div", { className: "muse-card-actions" },
-            latest?.outcome === "unconfirmed" && button("recheck-memory-rule", zh ? "重新读取回执" : "Check chat receipt"),
-            latest?.outcome !== "set" && button("set-memory-rule", latest ? (zh ? "重新设置规则" : "Set rule again") : (zh ? "设置规则" : "Set rule")),
-            (canRemove || latest?.action === "remove" && latest.outcome === "unconfirmed") &&
-              button("remove-memory-rule", zh ? "移除此规则" : "Remove this rule")),
-          pendingAccount === account.id && ["set-memory-rule", "remove-memory-rule", "recheck-memory-rule"].includes(pending) &&
-            h("p", { role: "status", className: "muse-meta" }, pending === "recheck-memory-rule"
-              ? (zh ? "正在主聊天中查找已有回执…" : "Checking main chat for an existing receipt…")
-              : (zh ? "正在处理规则请求，等待 Muse 主聊天回执…" : "Processing the rule request and waiting for Muse’s reply…")),
-          latest && h("details", { className: "muse-rule-receipt" },
-            h("summary", null, (zh ? "查看回执 · " : "View receipt · ") + new Date(latest.at).toLocaleString(locale)),
-            h("p", null, ruleStatus(latest, zh)),
-            h("p", { style: { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } }, latest.reply ||
-              (zh ? "未收到可确认的回复。" : "No attributable reply received.")),
-            latest.delivered && h("p", { className: "muse-meta" }, zh ? "主聊天中已看到规则请求。" : "Request found in main chat."),
-            latest.checkedAt && h("p", { className: "muse-meta" },
-              (zh ? "最近核对主聊天 · " : "Main chat checked · ") + new Date(latest.checkedAt).toLocaleString(locale)),
-            latest.legacyHistory && h("p", { className: "muse-meta" }, zh ? "旧请求没有编号，回执对应主聊天中可核对的操作，原点击是否送达仍待确认。" : "This older request had no ID. The receipt describes the operation found in main chat. Delivery of the original click is unknown."),
-            latest.detail && h("p", { className: "muse-meta" }, latest.detail),
-            confirmed && confirmed.at !== latest.at && h("div", { className: "muse-meta" },
-              (zh ? "上次明确回执 · " : "Last confirmed status · ") + new Date(confirmed.at).toLocaleString(locale) +
-              " · " + ruleStatus(confirmed, zh), h("p", null, confirmed.reply))),
+          h(AccountRuleActions, { title: zh ? "旁聊独立" : "Independent side chats",
+            state: account.memoryRule, suffix: "memory-rule", button, zh, locale, pending: rowPending }),
+          hasVideoRule && h(AccountRuleActions, { title: zh ? "视频原片优先" : "Original video first",
+            state: account.videoRule, suffix: "video-rule", button, zh, locale, pending: rowPending, importable: true }),
           h("div", { className: "muse-card-actions" },
             button("open-browser", t("settings.openBrowser")), !needsSignIn && button("verify", t("settings.verify")),
             button("probe", t("settings.test")), !account.selected && button("select", t("settings.select")),
@@ -1435,6 +1445,7 @@ window.__ModuleLoader__.load({
     function MuseSettingsCard({ ctx }) {
       useStyleTag();
       const locale = useLocale(ctx);
+      const zh = String(locale).toLowerCase().startsWith("zh");
       const t = React.useMemo(() => makeTranslate(locale), [locale]);
       const [snapshot, setSnapshot] = useState(undefined);
       const [label, setLabel] = useState("");
@@ -1794,8 +1805,16 @@ window.__ModuleLoader__.load({
                       ),
                     )
                   : null,
-                snapshot?.memoryRule && h(RuleSettings, { snapshot, locale, pending,
+                snapshot?.memoryRule && h(RuleSettings, { rule: snapshot.memoryRule, locale, pending,
+                  title: zh ? "为新账号自动设置旁聊独立规则（推荐）" : "Automatically set the side-chat rule for new accounts",
+                  description: zh ? "首次登录时向 Muse 主聊天发送一次。同一旁聊仍可续改，关闭只影响后续新账号。" : "Request independent side chats on first sign-in. Edits can continue in the same chat. Turning this off affects future accounts.",
+                  enabled: snapshot.settings.autoSetMemoryRule,
                   save: enabled => void runAction("save-settings", undefined, { settings: { autoSetMemoryRule: enabled } }) }),
+                snapshot?.videoRule && h(RuleSettings, { rule: snapshot.videoRule, locale, pending,
+                  title: zh ? "为新账号自动设置视频原片优先" : "Request the original video first for new accounts",
+                  description: zh ? "请 Muse 先交付本轮第一版视频，说明偏差，等你要求后再返工。已有账号可在下方展开管理。关闭只影响后续新账号。" : "Ask Muse to deliver the first video, flag discrepancies and wait for your edits. Manage existing accounts below. Turning this off affects future accounts.",
+                  enabled: snapshot.settings.autoSetVideoRule,
+                  save: enabled => void runAction("save-settings", undefined, { settings: { autoSetVideoRule: enabled } }) }),
                 snapshot === undefined
                 ? h("p", null, "\u2026")
                 : accounts.length === 0
@@ -1808,6 +1827,7 @@ window.__ModuleLoader__.load({
                       accounts.map((account) =>
                         h(AccountRow, {
                           key: account.id,
+                          hasVideoRule: Boolean(snapshot.videoRule),
                           account,
                           t,
                           locale,

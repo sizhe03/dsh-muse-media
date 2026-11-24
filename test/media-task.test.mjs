@@ -251,7 +251,7 @@ function simulateMainChat(f) {
 }
 
 test("new login writes one named rule; manual removal retains its own receipt and never re-enrolls", async t => {
-  const f = fixture(t);
+  const f = fixture(t, { autoSetVideoRule: false });
   const chat = simulateMainChat(f);
   const added = await f.picker("", "add", { label: "fresh" });
   const accountId = added.account.id;
@@ -289,8 +289,49 @@ test("new login writes one named rule; manual removal retains its own receipt an
   assert.equal(row(await action("set-memory-rule")).latest.outcome, "set");
 });
 
+test("first sign-in sets both named rules once and video removal preserves the side-chat receipt", async t => {
+  const f = fixture(t);
+  const chat = simulateMainChat(f);
+  const { account } = await f.picker("", "add", { label: "video" });
+  const action = name => f.picker("", name, { accountId: account.id });
+  const row = result => result.snapshot.accounts.find(a => a.id === account.id);
+  const verified = await action("verify");
+  assert.equal(verified.snapshot.settings.autoSetVideoRule, true);
+  assert.equal(row(verified).videoRule.latest.outcome, "set");
+  assert.equal(row(verified).videoRule.latest.automatic, true);
+  assert.ok(chat.writes[1].includes(verified.snapshot.videoRule.text));
+  await action("verify");
+  assert.equal(chat.writes.length, 2);
+  chat.response = "已移除";
+  const removed = row(await action("remove-video-rule"));
+  assert.equal(removed.videoRule.latest.outcome, "removed");
+  assert.deepEqual(removed.memoryRule, row(verified).memoryRule);
+  assert.ok(chat.writes[2].includes(verified.snapshot.videoRule.name));
+  assert.ok(!chat.writes[2].includes(verified.snapshot.videoRule.text));
+});
+
+test("an existing account can import its video receipt from the main chat without sending", async t => {
+  const f = fixture(t);
+  const chat = simulateMainChat(f);
+  const action = name => f.picker("", name, { accountId: "acc-01" });
+  const verified = await action("verify");
+  assert.equal(verified.snapshot.accounts[0].videoRule, undefined);
+  const missing = await action("recheck-video-rule");
+  assert.equal(missing.ok, false);
+  const rule = verified.snapshot.videoRule;
+  const id = "60af09b9-c20f-4a54-802b-523c69dae0bd";
+  const prompt = `请将以下名为「${rule.name}」的规则写入这个账号的长期记忆，对以后新建和已有的旁聊生效。\n${rule.text}\n实际保存成功后只回复“已设置”，无法保存请回复“无法保存”，无法确认请回复“无法确认”。\n本次回执编号：${id}（仅用于定位本条消息，不写入记忆或回复。）`;
+  chat.users.push({ index: 0, text: prompt });
+  chat.agents.push({ index: 1, text: "已设置" });
+  const imported = await action("recheck-video-rule");
+  assert.equal(imported.receipt.outcome, "set");
+  assert.equal(imported.receipt.requestId, id);
+  assert.equal(imported.snapshot.accounts[0].memoryRule, undefined);
+  assert.equal(chat.writes.length, 0);
+});
+
 test("existing accounts stay manual and old opt-out survives unless the new setting overrides it", async t => {
-  const f = fixture(t, { independentGeneration: false });
+  const f = fixture(t, { independentGeneration: false, autoSetVideoRule: false });
   const chat = simulateMainChat(f);
   const existing = await f.picker("", "verify", { accountId: "acc-01" });
   assert.equal(existing.snapshot.settings.autoSetMemoryRule, false);
