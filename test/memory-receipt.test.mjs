@@ -48,3 +48,12 @@ test("a matching old assistant bubble is never used, and an interrupted new repl
   assert.equal(other.reply, "");
   assert.equal(other.delivered, false);
 });
+
+test("a later proactive message is separate from a confirmed reply, while fragments of the same reply stay together", async () => {
+  const snapshot = { href: MAIN_CHAT, stop: false, users: [{ index: 0, text: "request" }],
+    agents: [{ index: 1, id: "receipt", text: "已设置" }, { index: 2, id: "later", text: "早上好" }] };
+  const read = async () => readRuleReply({ snapshot: async () => snapshot }, "request", "set", Date.now() + 1600);
+  assert.equal((await read()).outcome, "set");
+  snapshot.agents[1].id = "receipt";
+  assert.equal((await read()).outcome, "unconfirmed");
+});
