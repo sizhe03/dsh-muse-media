@@ -176,6 +176,66 @@ test("a revision on a signed-out account never tries the second account", async 
   assert.equal(f.state.sends, 1);
 });
 
+for (const kind of ["image", "video"]) {
+  test(kind + " stops on sign-out when an account was requested", async t => {
+    const accounts = ["acc-01", "acc-02"].map(id => ({ id, label: id, status: "ready" }));
+    const f = fixture(t, {}, accounts);
+    const opened = [];
+    t.mock.method(MuseBrowser.prototype, "withPage", async (id, _options, fn) => {
+      opened.push(id);
+      return fn({ closed: false });
+    });
+    f.page("waitReady", async () => opened.at(-1) === "acc-01" ? "signed-out" : "ready");
+    f.page("waitMedia", async () => ({ ...image, kind, mime: kind === "video" ? "video/mp4" : image.mime }));
+    const tool = f.registry.get("muse_draw_" + kind);
+    await assert.rejects(tool.execute({ account: "acc-01", prompt: "new work" }), { code: "SIGNED_OUT" });
+    assert.ok(opened.length > 0 && opened.every(id => id === "acc-01"));
+    assert.equal(f.state.sends, 0);
+    const automatic = await tool.execute({ prompt: "new work" });
+    assert.equal(automatic.account, "acc-02");
+  });
+
+  test(kind + " validates the account for task revisions and pinned chats before sending", async t => {
+    const f = fixture(t, {}, [
+      { id: "acc-01", label: "Main", status: "ready" },
+      { id: "acc-02", label: "Studio", status: "ready" },
+    ]);
+    const url = "https://muse.ai/thread/account-check";
+    const tool = f.registry.get("muse_draw_" + kind);
+    f.page("openSelectedThread", async () => 1);
+    f.page("openRevision", async () => {});
+    f.page("waitMedia", async () => ({ ...image, kind, mime: kind === "video" ? "video/mp4" : image.mime, threadUrl: url, turn: 1 }));
+    const first = await tool.execute({ account: "Studio", prompt: "original" });
+    assert.equal(f.tasks().find(row => row.id === first.taskId).accountId, "acc-02");
+    await f.picker("pinned", "import-thread", { accountId: "acc-02", url });
+    for (const pinned of [false, true]) {
+      const ctx = pinned ? { agent: { session: { id: "pinned" } } } : undefined;
+      const args = pinned ? { prompt: "edit" } : { prompt: "edit", continueFromTaskId: first.taskId };
+      const sends = f.state.sends;
+      await assert.rejects(tool.execute({ ...args, account: "acc-01" }, ctx), { code: "REVISION_ACCOUNT_MISMATCH" });
+      await assert.rejects(tool.execute({ ...args, account: "unknown" }, ctx), { code: "UNKNOWN_ACCOUNT" });
+      assert.equal(f.state.sends, sends);
+      await tool.execute({ ...args, account: "studio" }, ctx);
+      assert.equal(f.state.sends, sends + 1);
+    }
+  });
+}
+
+test("duplicate labels require an account ID on all three tools", async t => {
+  const accounts = ["acc-01", "acc-02"].map(id => ({ id, label: "Studio", status: "ready" }));
+  const f = fixture(t, {}, accounts);
+  for (const name of ["muse_draw_image", "muse_draw_video", "muse_quota"]) {
+    const tool = f.registry.get(name);
+    const args = name === "muse_quota" ? {} : { prompt: "new work" };
+    await assert.rejects(tool.execute({ ...args, account: "Studio" }), { code: "AMBIGUOUS_ACCOUNT" });
+  }
+  assert.equal(f.state.sends, 0);
+  assert.equal(f.state.readings.length, 0);
+  f.page("waitMedia", async () => image);
+  const first = await f.registry.get("muse_draw_image").execute({ prompt: "new work", account: "acc-02" });
+  assert.equal(f.tasks().find(row => row.id === first.taskId).accountId, "acc-02");
+});
+
 test("pinned web threads apply to both media tools in just their DSH session", async (t) => {
   const f = fixture(t);
   const url = "https://muse.ai/thread/manual-history";

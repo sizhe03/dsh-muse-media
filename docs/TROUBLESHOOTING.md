@@ -4,6 +4,12 @@
 
 ## 中文
 
+**中国大陆用户先分清两种情况。** 在同一台电脑上，用普通浏览器和插件的登录窗口分别打开 [muse.ai](https://muse.ai/)。
+
+1. **两个窗口都空白或连接超时。** 检查网址和浏览器的网络连接。若你平时通过单位或学校提供的网络访问 Muse，请确认这个独立浏览器窗口也能通过该网络打开官网。空白页本身无法说明账号被地区限制。
+2. **普通浏览器能生成，只有插件窗口空白。** 在插件账号行关闭浏览器，再点「打开登录窗口」，在新窗口中登录同一个账号。仍然空白时，反馈 DSH 和插件版本、窗口地址及错误文字。请勿附上登录凭据。
+3. **网页明确提示某项功能在当前地区不可用。** Muse 分地区开放，插件沿用该账号在网页上的权限。需要在 Muse 开放该功能的地区、用已获准的账号才能使用。若图片可用而视频受限，可以先用图片；可向 Muse 查询视频权限，或暂用当地可用的视频服务。[Muse 官方帮助](https://www.meta.com/en-gb/help/superintelligence/1303670544995562/)
+
 | 遇到的情况 | 怎么查 |
 | --- | --- |
 | 图片比预期小 | 去「设置 → Muse → 生成记录」，找到本次任务，点「打开文件所在位置」。在 Windows 文件属性的「详细信息」里查看实际宽高。若显示「仅预览」，打开该条记录的 Muse 原对话，检查可下载的原图。旧版曾保存过 498 × 498 的小图。 |
@@ -16,11 +22,19 @@
 
 ### 视频提示地区不可用
 
+日本、新加坡都有 Meta 发布的 Muse 上线公告。公告说明当地可以使用 Muse，具体账号的视频权限仍要在网页上单独确认。[日本上线公告](https://about.fb.com/ja/news/2026/10/muse-personal-ai-agent-launches-in-japan/) · [新加坡上线公告](https://about.fb.com/news/2026/10/muse-is-now-available-in-singapore-the-worlds-first-personal-ai-agent-built-for-everyone/)
+
 维护者记录过来自美国、加拿大、日本、新加坡的成功案例。在七个账号、两个月的观察中，一个账号在观察期结束时仍无法生成视频，同一账号的图片生成正常。该账号换 IP 后仍受限。注册邮箱、WebRTC 和 DNS 是当时排查的线索，单凭这些信息无法判定其他账号是否可用，也无法推断限制会持续多久。请记录 Muse 给该账号的原话。
 
 [返回插件首页](../README.md)
 
 ## English
+
+**If you are in mainland China, first check what the browser shows.** Open [muse.ai](https://muse.ai/) both in your usual browser and in the plugin’s sign-in window on the same computer.
+
+1. **Both windows stay blank or time out.** Check the address and network connection. If you normally use a work or school network to reach Muse, verify that the separate browser window can reach the site on that network too. A blank page alone does not establish a region restriction.
+2. **The website generates media, but the plugin window is blank.** Close the browser from the account row, reopen its sign-in window and sign in with the same account. If it stays blank, report the DSH and plugin versions, window address and error text. Keep login credentials private.
+3. **Muse explicitly says a feature is unavailable in your region.** The plugin uses the features offered to that account on the web. Use the feature in a region where Muse offers it, with an eligible account. If images work and video does not, keep using images, check video access with Muse or use a video service available locally. [Muse Help Centre](https://www.meta.com/en-gb/help/superintelligence/1303670544995562/)
 
 | Symptom | What to check |
 | --- | --- |
@@ -33,6 +47,8 @@
 | A side-chat rule is unconfirmed | Expand the account, review the timestamp and select **Check chat receipt**. The connectivity test sends a test message. Setting or removing a rule sends a request in the main chat. Checking its receipt only reads existing replies. |
 
 ### Muse reports video is unavailable in this region
+
+Meta has announced Muse launches in Japan and Singapore. Check video access separately in the web app with the account you plan to use. [Japan launch](https://about.fb.com/ja/news/2026/10/muse-personal-ai-agent-launches-in-japan/) · [Singapore launch](https://about.fb.com/news/2026/10/muse-is-now-available-in-singapore-the-worlds-first-personal-ai-agent-built-for-everyone/)
 
 The maintainer recorded successful runs in the United States, Canada, Japan and Singapore. Across seven accounts observed for two months, one still could not generate video at the end of the observation. Image generation kept working on that account. Changing IP did not restore video for that account. The investigation considered the registration email, WebRTC and DNS. These observations do not establish eligibility for other accounts or the duration of a restriction. Keep Muse’s reply for the affected account.
 

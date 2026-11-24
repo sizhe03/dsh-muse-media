@@ -9,9 +9,27 @@ Generate images and videos in a DSH conversation with your own Muse account. Ask
 
 [中文](README.md) · [Install and sign in](#install-and-sign-in) · [Release notes](https://github.com/sizhe03/dsh-muse-media/releases/latest) · [Report an issue](https://github.com/sizhe03/dsh-muse-media/issues/new/choose)
 
+**Using the plugin in mainland China? Try Muse on the web before installing.** Open [muse.ai](https://muse.ai/) on the same computer, sign in, and try the feature you need. Test video separately: an account that can chat or generate images may still receive a region restriction for video.
+
+- **Blank sign-in window?** Open the same address in your usual Chrome or Edge browser. If both are blank, check whether your network can reach Muse. If the site works there and only the plugin window stays blank, follow the plugin troubleshooting steps.
+- **Muse says the feature is unavailable in your region?** Use it in a region where Muse offers it, with an eligible account. If only video is restricted, you can still use image generation if it works on the web. For video, wait for access or use a service available locally. [Troubleshooting and observed results](docs/TROUBLESHOOTING.md#english) · [Muse Help Centre](https://www.meta.com/en-gb/help/superintelligence/1303670544995562/)
+
 ![Two results from the same Muse thread: the original teal mug on the left and its deep red revision on the right](docs/muse-cover.png)
 
 > “Change the glaze to deep red and keep everything else the same.” These are the two previews saved during that revision.
+
+## Video example · Seamless looping avatar
+
+**From the maintainer.** Two free Muse accounts with generation access have covered my frequent image and video work. I ran the same image prompts through ChatGPT, Google and Muse across several rounds and usually kept the Muse result. In some sessions my Google Pro allowance ran out after a few rounds, while a batch of Muse images barely moved my weekly usage. I saw no visible watermark on the files I kept. The avatar below took one video generation; for clips that need another pass, I keep the original and ask for specific edits. You can check your own allowance in Settings.
+
+<a href="https://github.com/sizhe03/dsh-muse-media/blob/main/docs/examples/crystal-waveform-avatar.mp4"><img src="docs/examples/crystal-waveform-avatar.jpg" width="256" alt="Audio waveforms inside three cyan crystal slabs. Select to watch the four-second looping avatar."></a>
+
+The finished avatar is a looping MP4 video. Make it in two turns in DSH:
+
+1. **First turn · Generate an image.** Ask DSH to “use Muse to generate a still image for the first frame,” then paste the image prompt. Choose the still you want to animate. [Original image prompt (Chinese)](docs/examples/crystal-waveform-avatar-image-prompt-zh.txt) · [Selected 1600 × 1600 still](docs/examples/crystal-waveform-avatar-first-frame.webp)
+2. **Second turn · Generate a video.** Attach the selected still to your next DSH message. Ask DSH to “use Muse to generate a looping video starting from this image,” then paste the video prompt. The camera and crystals stay still while a silver-blue pulse traces the waveforms from back to front. This video took one generation. [Original video prompt (Chinese)](docs/examples/crystal-waveform-avatar-video-prompt-zh.txt)
+
+[Watch the original MP4 (4 s · 1080 × 1080 · 24 fps · silent)](https://github.com/sizhe03/dsh-muse-media/blob/main/docs/examples/crystal-waveform-avatar.mp4) · [English prompt submitted for the video task](docs/examples/crystal-waveform-avatar-prompt.txt)
 
 ## Install and sign in
 
@@ -54,7 +72,7 @@ If the record says **Preview only**, its download is the preview. Open the origi
 ## Accounts, usage and side chats
 
 - **Read usage.** The weekly figure beside the composer belongs to the displayed Muse account. While idle, it shows the account you are viewing. During generation, it shows the account doing the work. Hover for the reset date, or refresh the reading in Accounts.
-- **Choose an account.** For new work, the plugin prefers an available account whose weekly allowance resets soonest. The preferred-account setting breaks ties. An exhausted allowance or an upstream rate limit stops the task.
+- **Choose an account.** New work defaults to an available account whose weekly allowance resets soonest. Ask “Use acc-02 for this video” to select one explicitly. If that account becomes unavailable, the task stops. Edits and pinned chats use the original account. Usage queries accept an account name and default to the account selected in Settings.
 - **Keep projects separate.** By default, after a new account’s first verified sign-in, the plugin sends a rule to the **main Muse chat** asking Muse to use only the current side chat’s context. Read the full rule in Settings. Existing accounts can request it manually. Turning off automatic setup applies to future accounts.
 - **Original video first.** On first verified sign-in, new accounts also ask Muse to deliver the first video from each run and wait for instructions before reworking it. This rule has its own switch. Expand an account to set or remove the rule, or read an existing receipt from the main chat.
 - **Check or remove the rule.** Expand an account to see the time and Muse’s reply to the last set or removal request. If unconfirmed, **Check chat receipt** reads the existing conversation again. Removal identifies the rule by its name, `DSH-Muse-旁聊独立-v1`, and asks Muse to avoid repeating it. The receipt records Muse’s response. Its effect on a particular generation depends on Muse.

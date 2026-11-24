@@ -16,8 +16,8 @@
         "zh": "Muse 媒体"
       },
       "description": {
-        "en": "Generate images and videos, revise them in the original Muse conversation, and open the saved file from History. Track weekly usage per account.",
-        "zh": "在对话里生成图片和视频，回到原对话接着修改，从生成记录一键定位文件。支持按账号查看周额度。"
+        "en": "Generate and revise images and videos with your own Muse account. Check access at muse.ai before installing, especially in mainland China. Video availability can differ from image access.",
+        "zh": "用自己的 Muse 账号生图、生视频，在原对话续改。中国大陆用户安装前请先在 muse.ai 登录并试用所需功能，视频可能有单独的地区限制。"
       },
       "author": "sizhe03",
       "homepage": "https://github.com/sizhe03/dsh-muse-media#readme",
@@ -162,6 +162,13 @@
         {
           "version": "1.3.0",
           "publishTimestamp": 1795441994,
+          "source": {
+            "type": "npm"
+          }
+        },
+        {
+          "version": "1.3.1",
+          "publishTimestamp": 1795541534,
           "source": {
             "type": "npm"
           }

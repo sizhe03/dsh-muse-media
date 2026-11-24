@@ -115,6 +115,7 @@ window.__ModuleLoader__.load({
       "settings.scope": "周额度",
       "settings.pendingChanges": "有未保存的更改",
       "settings.emptyAccount": "添加 Muse 账号后，打开登录窗口完成首次登录。",
+      "settings.regionHint": "中国大陆用户请先在普通浏览器打开 muse.ai，试一下所需的生图或视频功能。若只有插件登录窗口空白，请在该窗口打开同一网址；若 Muse 提示地区不支持，插件沿用网页的权限。",
       "settings.mediaMissing": "媒体文件不可用",
       "settings.locateFile": "打开文件所在位置",
       "settings.filePath": "本地文件",
@@ -284,6 +285,7 @@ window.__ModuleLoader__.load({
       "settings.scope": "Weekly allowance",
       "settings.pendingChanges": "Unsaved changes",
       "settings.emptyAccount": "Add a Muse account, then open its browser to sign in.",
+      "settings.regionHint": "In mainland China, first open muse.ai in your usual browser and try the image or video feature you need. If only the plugin window is blank, open the same address there. The plugin uses the region and feature access granted by Muse.",
       "settings.mediaMissing": "Media unavailable",
       "settings.locateFile": "Show in folder",
       "settings.filePath": "Local file",
@@ -1765,6 +1767,8 @@ window.__ModuleLoader__.load({
                     adding ? t("settings.cancel") : t("settings.addAccount"),
                   ),
                 ),
+                (adding || accounts.length === 0 || accounts.some(account => account.status === "new" || account.status === "needs-login")) &&
+                  h("p", { className: "muse-meta" }, t("settings.regionHint")),
                 adding
                   ? h(
                       "div",

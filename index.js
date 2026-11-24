@@ -752,10 +752,16 @@ class MuseRuntime {
     if (wanted === "") return undefined;
 
     const accounts = this.#accounts.list();
-    const match =
-      accounts.find((account) => account.id === wanted) ??
-      accounts.find((account) => account.label === wanted) ??
-      accounts.find((account) => account.label.toLowerCase() === wanted.toLowerCase());
+    let match = accounts.find(account => account.id === wanted);
+    if (!match) {
+      let matches = accounts.filter(account => account.label === wanted);
+      if (!matches.length) matches = accounts.filter(account => account.label.toLowerCase() === wanted.toLowerCase());
+      if (matches.length > 1) throw new MuseFailure(
+        `多个 Muse 账号使用标签「${wanted}」，请用账号 ID 指定：${matches.map(row => row.id).join("、")}。`,
+        { code: "AMBIGUOUS_ACCOUNT", kind: FAILURE.INVALID },
+      );
+      [match] = matches;
+    }
 
     if (match === undefined) {
       const known = accounts.map((account) => `${account.label}（${account.id}）`).join("、") || "（没有账号）";
@@ -1319,6 +1325,7 @@ class MuseRuntime {
      */
     let parent;
     let chosen;
+    const requested = this.accountForRequest(account);
     const selected = this.#threads.selected(sessionId);
     if (selected) {
       parent = { ...selected, selected: true };
@@ -1338,23 +1345,19 @@ class MuseRuntime {
       if (!chosen) throw new MuseFailure("原作品的 Muse 账号已移除，无法打开原对话。", {
         code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
       });
+    } else if (requested !== undefined) {
+      chosen = requested;
     } else {
-      /**
-       * A requested account wins over the ranking.
-       *
-       * The ranking exists because allowance expires; it is the right default but it is not an instruction. When a caller names an account,
-       * that name is the instruction, and accountForRequest has already refused anything unusable — so reaching here means the account is
-       * known and healthy, and using a different one would charge the wrong quota under a result that looks correct.
-       */
-      const requested = this.accountForRequest(account);
-      if (requested !== undefined) {
-        chosen = requested;
-      } else {
-        const preferred = this.preferredAccount();
-        chosen = rankAccounts(this.#accounts.list(), {
-          preferredId: preferred.id, now: Date.now(),
-        }).ordered[0] ?? preferred;
-      }
+      const preferred = this.preferredAccount();
+      chosen = rankAccounts(this.#accounts.list(), {
+        preferredId: preferred.id, now: Date.now(),
+      }).ordered[0] ?? preferred;
+    }
+    if (parent && requested && requested.id !== chosen.id) {
+      throw new MuseFailure(
+        `这条 Muse 对话属于「${chosen.label}」（${chosen.id}），你指定了「${requested.label}」（${requested.id}）。请用原账号续改，或另开新作品。`,
+        { code: "REVISION_ACCOUNT_MISMATCH", kind: FAILURE.INVALID },
+      );
     }
 
     const task = this.#tasks.create({
@@ -1393,7 +1396,7 @@ class MuseRuntime {
             preferred: chosen,
             task,
             parent,
-            config: parent ? { ...config, maxAccountsPerTask: 1 } : config,
+            config: parent || requested ? { ...config, maxAccountsPerTask: 1 } : config,
           });
         } catch (error) {
           // The floor for an exit that journaled nothing. It must never
@@ -1445,10 +1448,10 @@ class MuseRuntime {
        * cooldown, sign-out, disablement.
        */
       const fresh = this.#accounts.get(account.id);
-      if (!fresh && parent) throw new MuseFailure("排队期间原作品的账号已移除，无法续改。", {
-        code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+      if (!fresh) throw new MuseFailure("排队期间账号已移除，本次没有发送。", {
+        code: parent ? "REVISION_UNAVAILABLE" : "UNKNOWN_ACCOUNT", kind: FAILURE.INVALID,
       });
-      if (fresh !== undefined) account = fresh;
+      account = fresh;
       const verdict = eligibility(account);
 
       if (!verdict.usable && !verdict.needsRecheck) {
@@ -1770,18 +1773,16 @@ class MuseRuntime {
          * *before* the point of no return instead of spending a request into a live limit.
          */
         const current = this.#accounts.get(account.id);
-        if (!current && revision) throw new MuseFailure("原作品的账号已移除，本次没有发送。", {
-          code: "REVISION_UNAVAILABLE", kind: FAILURE.INVALID,
+        if (!current) throw new MuseFailure("账号已移除，本次没有发送。", {
+          code: revision ? "REVISION_UNAVAILABLE" : "UNKNOWN_ACCOUNT", kind: FAILURE.INVALID,
         });
-        if (current !== undefined) {
-          const verdictNow = eligibility(current);
-          if (!verdictNow.usable) {
-            this.#tasks.update(task.id, {
-              state: TASK_STATE.FAILED,
-              note: `发送前复核：${verdictNow.label}`,
-            });
-            throw this.#unavailableFailure(current, verdictNow);
-          }
+        const verdictNow = eligibility(current);
+        if (!verdictNow.usable) {
+          this.#tasks.update(task.id, {
+            state: TASK_STATE.FAILED,
+            note: `发送前复核：${verdictNow.label}`,
+          });
+          throw this.#unavailableFailure(current, verdictNow);
         }
 
         // ---- send boundary (G5): journal first, then exactly one action ----
@@ -2163,8 +2164,8 @@ class MuseRuntime {
       );
     const hint =
       needsLogin.length === 0
-        ? "没有其他可用账号。"
-        : `没有其他可用账号；需要重新登录：${needsLogin
+        ? "本次任务已停止。"
+        : `以下账号需要重新登录：${needsLogin
             .map((account) => account.label)
             .join("、")}。请在「设置 → 插件 → Muse 媒体」里登录。`;
     return new MuseFailure(`${failure.message} ${hint}`, {
@@ -3220,8 +3221,8 @@ const BRIEF_REFERENCE_HELP =
 const ACCOUNT_FIELD = {
   type: "string",
   description:
-    "指定本次使用的 Muse 账号，填账号 id 或标签。省略则按额度到期顺序自动选号。" +
-    "填了就必须用这个账号：不存在或当前不可用时直接报错，不会静默换成别的账号。",
+    "指定本次使用的 Muse 账号，填 ID 或唯一标签。指定后只用该账号，续改或固定对话须与原账号一致。" +
+    "省略时，新作品按周额度重置顺序选号，续改沿用原账号，查额度使用当前选中的账号。",
 };
 
 const BRIEF_REFERENCE_FIELDS = {

@@ -1,0 +1,17 @@
+A seamless looping cinemagraph. Perfect loop — first frame and last frame identical, so it plays forever without a visible seam.
+
+Use this image of three floating translucent cyan-green crystal slabs as the only image source. Camera, framing, and the position of all three crystals stay completely locked. The crystals do not move, rotate, drift, or scale. The deep indigo fog and the teal aurora glow in the background stay frozen.
+
+The only thing that changes is brightness moving through the audio waveforms sealed inside the crystals, like an archive being read layer by layer.
+
+Read the layers from the farthest crystal to the nearest one. A soft silver-cyan pulse of light first wakes the waveform in the farthest, smallest crystal at the top right. The bright segment travels along that existing waveform from one end to the other. Then the pulse crosses into the middle crystal and travels along its waveform the same way. Finally it reaches the nearest, largest crystal in the foreground and runs along its silver-white waveform, brightest here because this crystal is closest.
+
+In every layer the brightness moves along the waveform that is already drawn inside the glass — it is never a separate glowing dot or a new shape floating over the crystal. Where the pulse passes, the waveform becomes bright; after it moves on, the waveform fades back to the brightness it had before.
+
+The three handoffs are continuous and natural, not three separate flashes. As the foreground pulse fades away, the farthest crystal begins to glow faintly again and the whole read starts over. The full cycle takes 4 seconds and returns exactly to the starting state, so the last frame matches the first.
+
+Never brighten the whole image at once, never flash the entire frame, never pulse the background, no global exposure shift, no camera breathing, no grain flicker.
+
+perfect loop, cinemagraph, silent, square 1:1, 24 fps.
+
+(Preferred aspect ratio: 1:1; Target duration: 4 seconds)
