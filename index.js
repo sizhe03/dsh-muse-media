@@ -58,6 +58,14 @@ import {
 } from "./lib/pool.js";
 import { mintCode, monotonicNow, probeMessage, runProbe } from "./lib/probe.js";
 
+/**
+ * The main Muse chat.
+ *
+ * A session check needs an authenticated page, not a particular conversation. Using `/thread/new` there was actively harmful: it replaced the
+ * page a running task was watching.
+ */
+const MAIN_CHAT_URL = "https://muse.ai/";
+
 /** Routes owned by this plugin. */
 const QUOTA_PATH = "/plugins/dsh-muse-media/quota";
 /**
@@ -803,7 +811,16 @@ class MuseRuntime {
     const budget = Math.max(1_000, timeoutMs);
     const outcome = await this.#browser.withPage(
       accountId,
-      { visible, url: THREAD_URL, timeoutMs: Math.max(budget, 30_000) },
+      /**
+       * Verify on the main chat, never on \`/thread/new\`.
+       *
+       * `THREAD_URL` is a *fresh conversation*. Using it here replaced whatever the page was showing, so a session check issued while a
+       * generation was running wiped the conversation the result would appear in — and the media wait then spent its entire budget on a
+       * page that no longer held it.
+       *
+       * The session check only needs an authenticated Muse page; the main chat is that page.
+       */
+      { visible, url: MAIN_CHAT_URL, timeoutMs: Math.max(budget, 30_000) },
       async (rawPage) => {
         const page = new MusePage(rawPage, this.#log);
         const ready = await page.waitReady({ timeoutMs: budget });
