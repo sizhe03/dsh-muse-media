@@ -97,18 +97,6 @@ test("the listed versions match the current manifest version", () => {
   }
 
   /**
-   * In CI the newest version must be listed; locally, mid-release, it may lag.
-   *
-   * This has to apply to branch builds, not tag builds. A tag is pushed after the sync commit, so on a tag the
-   * index and the manifest agree by construction and the assertion can never fire. The failure worth catching
-   * is a branch where the version bump landed and the sync did not — the package is then live on npm while
-   * Discover still advertises the previous version, and nothing else notices.
-   *
-   * Its cost is a red commit for the minutes between bumping and syncing. That is a bookkeeping window, and it
-   * is cheaper than shipping users a stale index. The release steps close it by publishing, syncing, and
-   * committing the bump together with the index.
-   */
-  /**
    * In CI the newest version must be listed — but only on branch builds.
    *
    * On a tag this assertion cannot be satisfied: the tag is what triggers the publish, so when verify runs the version is by definition not on the

@@ -104,19 +104,19 @@ try {
 if (dirty !== "") {
   console.log("\nNext:");
   /**
-   * One commit, not two.
+   * The index commit comes after the release, not with it.
    *
-   * This used to suggest a separate `chore: index …` commit. Following that produced a version bump commit
-   * whose index was still behind, which the index test correctly failed — a red commit in every release,
-   * visible to anyone reading the history. The manifest, the changelog and the index describe one release and
-   * belong in one commit.
+   * This script can only run once npm serves the version, which happens when the tag workflow publishes. So by the time the index is generated,
+   * the version commit is already tagged and the release is out. Folding the index into that commit is no longer possible, and pushing the bump
+   * before the tag would put a commit on `main` that the index test fails by design.
+   *
+   * What the guide does instead: tag the bump, push only the tag, let the workflow publish, then commit the synced index and push it. `main` never
+   * carries a knowingly failing commit.
    */
-  console.log("  git add package.json CHANGELOG.md market-index.json");
-  console.log(`  git commit -m "${pkg.version}: <what changed>"`);
+  console.log("  git add market-index.json CHANGELOG.md package.json");
+  console.log(`  git commit -m "${pkg.version}: sync the market index"`);
   console.log("  git push");
-  console.log(`  git tag -a v${pkg.version} -m "${pkg.version} — <summary>"`);
-  console.log(`  git push origin v${pkg.version}`);
   console.log("");
-  console.log("  Version, changelog and index in a single commit: a bump commit without the index");
-  console.log("  fails the index test, and splitting them puts a red commit in the release history.");
+  console.log("  This commit goes to main after the release published. Pushing the bump before");
+  console.log("  tagging would fail the index test on a branch build, by design.");
 }
