@@ -103,6 +103,10 @@ jobs:
           node-version: "22"
           registry-url: ""
 
+      - name: Install an npm that supports trusted publishing
+        # Same reason as in the rehearsal: Node 22 ships npm 10, which cannot do the OIDC exchange.
+        run: npm install --global "npm@^11.5.1"
+
       - name: Publish
         # --provenance is automatic for OIDC publishes from a public repository; passing it makes the
         # intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
@@ -139,11 +143,18 @@ jobs:
           # instead of falling through to it.
           registry-url: ""
 
+      - name: Install an npm that supports trusted publishing
+        # The runner's bundled npm is 10.x, which predates OIDC publishing entirely. Installing it
+        # explicitly is not defensive padding: without it `npm publish` has no --provenance path and no
+        # way to exchange the OIDC token, and the failure would look like a credential problem.
+        run: |
+          echo "bundled: $(npm --version)"
+          npm install --global "npm@^11.5.1"
+          echo "now: $(npm --version)"
+
       - name: Confirm the npm CLI supports trusted publishing
-        # npm 11.5.1 is the floor for OIDC publishing. State it rather than discovering it later.
         run: |
           MAJOR_MINOR="$(npm --version | cut -d. -f1,2)"
-          echo "npm $(npm --version)"
           node -e '
             const [major, minor] = process.argv[1].split(".").map(Number);
             const ok = major > 11 || (major === 11 && minor >= 5);
