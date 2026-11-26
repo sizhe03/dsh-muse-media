@@ -92,8 +92,16 @@ jobs:
 
   publish:
     needs: verify
-    # Skipped unless the variable is set to true. A skipped job is not a failure.
-    if: vars.NPM_PUBLISH_ENABLED == 'true'
+    # Two conditions, both required:
+    #
+    #   1. the switch is on, and
+    #   2. a version tag was pushed.
+    #
+    # The second one is not redundant. Without it, dispatching the workflow by hand to rehearse OIDC
+    # also enters this job; it survives only because the registry check below happens to skip an
+    # already-published version. A rehearsal should not walk into the release job at all, and "a
+    # release happens when a tag is pushed" is the rule the switch was always assumed to carry.
+    if: vars.NPM_PUBLISH_ENABLED == 'true' && github.event_name == 'push' && github.ref_type == 'tag'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5

@@ -47,17 +47,18 @@ Harness 版本：0.2.2-rc.5
 
 在仓库根目录运行 `npm run check` 检查语法并执行测试，用 `npm pack --dry-run` 核对打包内容。分支推送和 PR 会运行 CI。页面测试会在 Chrome 中运行本地测试页面，涉及真实 Muse 网页布局的改动还需要在真实账号验证。
 
-维护者同意发版后，按下面的顺序执行。**顺序不能变**：市场索引记录的是 npm 上的实际发布时间，所以它只能在该版本可以从 npm 下载之后生成；而 npm 上的版本由标签工作流发布，标签又需要先提交好版本号。
+维护者同意发版后，按下面的顺序执行。**顺序不能变**：市场索引记录的是 npm 上的实际发布时间，只能在该版本可从 npm 下载之后生成；而 npm 上的版本由标签工作流发布。
 
-1. **更新包版本和 CHANGELOG。** 只改这两个文件，先不碰索引。此时索引落后于 manifest 是正常的。改完先跑一次 `npm test` 确认整个测试集仍然通过。
-2. **提交并推送。** 这一次提交只带版本号和更新记录。分支构建会检查「索引必须列出最新版本」，所以这次 CI 会是红的——这是设计允许的短暂状态，会在第 5 步关闭。
-3. **打 `v*` 标签并推送。** 标签构建不检查索引（它无法检查：这个版本此刻还不在 npm 上），所以 `verify` 会通过，随后 `publish` 用 OIDC 把包装发到 npm。
-4. **等 npm 可安装**，确认版本和来源证明正确。
-5. **运行 `node scripts/sync-market-index.mjs`**，把同步后的索引与版本、CHANGELOG 一起提交并推送。这一次 CI 转绿，主分支回到干净状态。
+1. **更新包版本和 CHANGELOG**，跑一次 `npm test` 确认整个测试集通过，然后提交。
+2. **给这个提交打 `v*` 标签，只推标签**（`git push origin v1.3.4`，不要同时推 `main`）。工作流开始验证并用 OIDC 发布。**此时远端 `main` 仍停在上一版，所以分支 CI 保持绿色。**
+3. **确认 npm 能安装这个确切版本**，并核对来源证明。
+4. **运行 `node scripts/sync-market-index.mjs`**，提交更新后的索引，然后把这两个提交一起推到 `main`。
 
-`publish` 作业会先向 registry 查询该版本是否已存在：存在就跳过发布，不存在才发布。所以重复打标签不会造成二次发布。
+第 4 步容易被忽略，因为前三步都不需要它。**漏掉它，安装不受影响，但插件市场和 Discover 会一直展示旧版本**——索引不会自己变。
 
-需要测试 OIDC 本身时，手动触发工作流会运行 `oidc-rehearsal`：它用一个一次性的预发布版本号发布到 `oidc-test` 标签下，不触碰 `latest`，也不影响市场索引。这件事不需要消耗正式版本号。
+`publish` 作业只在**推送版本标签**时执行；手动触发只运行演练，不会进入发布作业。即使重复推送同一个标签，registry 检查也会拦下二次发布。
+
+需要单独验证 OIDC 通路时，手动触发工作流运行 `oidc-rehearsal`：它用一个一次性的预发布版本号发布到 `oidc-test` 标签下，不触碰 `latest`，不影响市场索引，也不消耗正式版本号。
 
 普通文档更新直接提交即可。
 
@@ -65,17 +66,18 @@ Harness 版本：0.2.2-rc.5
 
 Run `npm run check` for syntax and tests, then `npm pack --dry-run` to inspect the package. CI runs on branch pushes and pull requests. The browser tests use local fixtures in Chrome. Verify changes that depend on Muse’s live markup against the actual site as well.
 
-A release requires maintainer approval. The order matters and cannot be rearranged: the market index records npm's real publish time, so it can only be built once the version is downloadable, and the version reaches npm through the tag workflow, which needs the version committed first.
+A release requires maintainer approval. The order matters: the market index records npm's real publish time, so it can only be built once the version is downloadable, and the version reaches npm through the tag workflow.
 
-1. **Bump the version and update the CHANGELOG.** Do not touch the index yet; it is expected to lag the manifest.
-2. **Commit and push.** This commit carries only the version and the changelog. The branch build requires the index to list the newest version, so this CI run is red — a deliberate, bounded window that step 5 closes.
-3. **Push the `v*` tag.** A tag build skips the index check (it cannot satisfy it: the version is not on npm yet), so `verify` passes and `publish` ships the package through OIDC.
-4. **Wait until npm can serve it**, then confirm the version and its provenance attestation.
-5. **Run `node scripts/sync-market-index.mjs`** and commit the synced index together with the version and changelog. CI turns green and the branch is clean.
+1. **Bump the version, update the CHANGELOG, run `npm test`, and commit.**
+2. **Tag that commit and push only the tag** (`git push origin v1.3.4`, not `main` alongside it). The workflow verifies and publishes through OIDC. Remote `main` still points at the previous release, so branch CI stays green throughout.
+3. **Confirm npm can serve that exact version**, and check its provenance attestation.
+4. **Run `node scripts/sync-market-index.mjs`**, commit the synced index, and push both commits to `main`.
 
-The `publish` job asks the registry whether the version already exists and publishes only when it does not, so a repeated tag cannot double-publish.
+Step 4 is the one that gets forgotten, because nothing before it needs it. Skip it and installs still work, but the plugin market and Discover keep advertising the previous version — the index does not update itself.
 
-To test OIDC itself, dispatch the workflow by hand: `oidc-rehearsal` publishes a throwaway prerelease under the `oidc-test` tag, leaving `latest` and the market index untouched. It costs no release number.
+The `publish` job runs only when a version tag is pushed; a manual dispatch rehearses and never enters it. Re-pushing the same tag cannot double-publish, because the job asks the registry first.
+
+To exercise OIDC on its own, dispatch the workflow: `oidc-rehearsal` publishes a throwaway prerelease under the `oidc-test` tag, leaving `latest` and the market index untouched, and costing no release number.
 
 ## 许可
 
