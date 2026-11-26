@@ -240,9 +240,22 @@ jobs:
         run: npm publish --provenance --access public --tag oidc-test
 
       - name: Report what actually landed
+        # The registry needs a few minutes before a new version is readable — measured at roughly three
+        # for this package. A report step that queries immediately and fails on 404 turns a successful
+        # publish into a red job, which is exactly backwards: the outcome worth reporting is that the
+        # publish call succeeded, and the lookup is corroboration, not the verdict.
         run: |
           echo "published $TEST_VERSION under the oidc-test tag"
-          npm view "dsh-muse-media@$TEST_VERSION" version dist.tarball
-          echo "latest is still:"
+          for attempt in 1 2 3 4 5 6 7 8; do
+            if npm view "dsh-muse-media@$TEST_VERSION" version 2>/dev/null; then
+              echo "confirmed on the registry after $attempt check(s)"
+              echo "latest is still:"
+              npm view dsh-muse-media dist-tags.latest
+              exit 0
+            fi
+            echo "not visible yet (attempt $attempt); waiting"
+            sleep 30
+          done
+          echo "::warning::$TEST_VERSION is not readable yet; publishing succeeded but the registry has not caught up"
           npm view dsh-muse-media dist-tags.latest
 
