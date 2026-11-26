@@ -189,7 +189,6 @@ window.__ModuleLoader__.load({
       "settings.diagState": "状态目录",
       "settings.diagTasks": "任务记录",
       "settings.diagMedia": "媒体文件",
-      "settings.mediaScope": "这里显示最近 {shown} 条记录，日志保留 {kept} 条；文件夹里始终保留全部 {files} 个文件，早先的作品不会随记录消失。想找以前生成的内容，点「打开媒体文件夹」。",
       "settings.diagBrowsers": "运行中的浏览器",
       "settings.diagChrome": "浏览器来源",
       "settings.diagChromeAuto": "自动探测",
@@ -352,7 +351,6 @@ window.__ModuleLoader__.load({
       "settings.diagState": "State directory",
       "settings.diagTasks": "Task records",
       "settings.diagMedia": "Media files",
-      "settings.mediaScope": "This list shows the newest {shown} records and the journal keeps {kept}; the folder always keeps every file ({files} so far). Earlier work does not disappear with the records. Use \"Open media folder\" to find something older.",
       "settings.diagBrowsers": "Browsers running",
       "settings.diagChrome": "Browser source",
       "settings.diagChromeAuto": "auto-detected",
@@ -1369,24 +1367,6 @@ window.__ModuleLoader__.load({
         { className: "muse-foot" },
         h("div", { className: "muse-list-head" }, h("h4", null, t("settings.disk")),
           h("button", { type: "button", className: "muse-btn", disabled: pending !== undefined, onClick: onRevealMediaDir }, t("settings.openMediaDir"))),
-        /**
-         * Why the folder holds more than the list.
-         *
-         * The history pane is a recent view, not an inventory: it shows the newest records and the journal keeps a bounded number. Delivered
-         * files are never deleted automatically — each one cost quota — so the folder accumulates. Stated here because this is where the two
-         * numbers sit side by side, and without it a larger file count reads like a fault.
-         */
-        snapshot.mediaCount === undefined
-          ? null
-          : h(
-              "p",
-              { className: "muse-meta muse-media-scope" },
-              t("settings.mediaScope", {
-                shown: snapshot.history?.length ?? 0,
-                kept: snapshot.diagnostics?.taskCount ?? 0,
-                files: snapshot.mediaCount,
-              }),
-            ),
         h(
           "div",
           { className: "muse-foot-row" },
