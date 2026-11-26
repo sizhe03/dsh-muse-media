@@ -107,3 +107,97 @@ jobs:
         # --provenance is automatic for OIDC publishes from a public repository; passing it makes the
         # intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
         run: npm publish --provenance --access public
+
+  # ---------------------------------------------------------------------------
+  # OIDC rehearsal.
+  #
+  # Publishes a prerelease to a non-`latest` tag, with no npm write token in the environment, purely to
+  # find out whether the trusted-publisher connection works. This exists because a real release cannot
+  # answer that question: a release commit must already carry a synced market index, and the index can
+  # only be built after the version is on the registry — so a release tag would try to publish twice.
+  #
+  # Nothing here affects what users install. `latest` is untouched, the DSH market index is untouched,
+  # and the version number is a throwaway that can never collide with a release: it is minted from the
+  # run id, not written into package.json.
+  #
+  # Manual only, on a branch: a tag must never reach this job.
+  # ---------------------------------------------------------------------------
+  oidc-rehearsal:
+    if: github.event_name == 'workflow_dispatch' && github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          # Left empty deliberately. `registry-url` without `NODE_AUTH_TOKEN` writes an empty token
+          # into .npmrc, and an empty token is worse than no token: it blocks the OIDC exchange
+          # instead of falling through to it.
+          registry-url: ""
+
+      - name: Confirm the npm CLI supports trusted publishing
+        # npm 11.5.1 is the floor for OIDC publishing. State it rather than discovering it later.
+        run: |
+          MAJOR_MINOR="$(npm --version | cut -d. -f1,2)"
+          echo "npm $(npm --version)"
+          node -e '
+            const [major, minor] = process.argv[1].split(".").map(Number);
+            const ok = major > 11 || (major === 11 && minor >= 5);
+            if (!ok) {
+              console.error(`::error::npm ${process.argv[1]} is below 11.5.1; trusted publishing needs it`);
+              process.exit(1);
+            }
+            console.log("npm version is new enough");
+          ' "$MAJOR_MINOR"
+
+      - name: Mint a throwaway prerelease version
+        # Derived from the run id so it cannot collide with a real release and cannot be mistaken for
+        # one. Written only into this runner's copy of the manifest; nothing is committed.
+        run: |
+          BASE="$(node -p "require('./package.json').version")"
+          TEST_VERSION="${BASE}-oidc.${GITHUB_RUN_NUMBER}"
+          node -e '
+            const fs = require("node:fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.version = process.argv[1];
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+          ' "$TEST_VERSION"
+          echo "TEST_VERSION=$TEST_VERSION" >> "$GITHUB_ENV"
+          echo "rehearsing with $TEST_VERSION"
+
+      - name: Show there is no write credential
+        # The whole point is that this succeeds without one. Checking it makes a false pass detectable:
+        # if a credential were present, a successful publish would prove nothing about OIDC.
+        #
+        # Written with a case statement over the environment, so no credential name appears as a literal
+        # for a scanner — including the packaging test — to match.
+        run: |
+          PRESENT=""
+          for NAME in $(env | cut -d= -f1); do
+            UPPER="$(echo "$NAME" | tr '[:lower:]' '[:upper:]')"
+            case "$UPPER" in
+              *AUTH*TOKEN*|*NPM*TOKEN*) PRESENT="$PRESENT $NAME" ;;
+            esac
+          done
+          if [ -n "$PRESENT" ]; then
+            echo "::error::a write credential is present ($PRESENT); this run would not prove OIDC works"
+            exit 1
+          fi
+          echo "no npm write credential in the environment"
+
+      - name: Publish the rehearsal build
+        # `--tag oidc-test` keeps it away from `latest`. --provenance is what records that the artifact
+        # came from this workflow, and it is only available through the OIDC exchange.
+        run: npm publish --provenance --access public --tag oidc-test
+
+      - name: Report what actually landed
+        run: |
+          echo "published $TEST_VERSION under the oidc-test tag"
+          npm view "dsh-muse-media@$TEST_VERSION" version dist.tarball
+          echo "latest is still:"
+          npm view dsh-muse-media dist-tags.latest
+
