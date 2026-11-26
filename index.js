@@ -38,6 +38,23 @@ import { join, extname, basename } from "node:path";
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+/**
+ * This build's version, read once at load.
+ *
+ * The settings pane had no version anywhere, so a bug report could not name the build that produced it — and "which version" is the first
+ * question every report needs answered. Read from the package manifest at module load rather than duplicated in a constant: a hand-copied
+ * version drifts from the published package the moment either is bumped.
+ */
+const VERSION = (() => {
+  try {
+    const here = fileURLToPath(new URL(".", import.meta.url));
+    return JSON.parse(readFileSync(join(here, "package.json"), "utf8")).version;
+  } catch {
+    return undefined;
+  }
+})();
 
 import { MuseBrowser, MusePaths, locateChrome } from "./lib/browser.js";
 import { MusePage, THREAD_URL, isPromptComplete, museThreadUrl } from "./lib/muse.js";
@@ -545,24 +562,51 @@ class MuseRuntime {
    *
    * Best-effort: on a headless box there is no file manager, and that must not become an error the UI has to handle.
    */
-  revealMediaDir() {
+  /**
+   * Open the media folder in the file manager.
+   *
+   * `windowsHide` was inherited from the browser launcher, where hiding a console matters. For a file manager it is exactly wrong: Explorer is
+   * the program being asked to appear.
+   *
+   * What does not work, and briefly shipped: reading `explorer.exe`'s exit code. Explorer returns 1 after successfully handing the path to a
+   * shell window — measured on a folder that did open — so treating non-zero as failure turned every successful open into a red error message.
+   * There is no exit-status contract to lean on here.
+   *
+   * The checks that are actually meaningful: does the directory exist, and did the launcher spawn without error. Everything past that is the
+   * shell's business, and claiming to know more would be inventing a signal.
+   */
+  async revealMediaDir() {
     const dir = this.mediaDir();
     try {
       mkdirSync(dir, { recursive: true });
-    } catch {
-      /* the spawn reports it */
-    }
-
-    const command =
-      process.platform === "win32" ? "explorer.exe" : process.platform === "darwin" ? "open" : "xdg-open";
-
-    try {
-      const child = spawn(command, [dir], { detached: true, stdio: "ignore", windowsHide: true });
-      child.unref();
-      return { ok: true, dir, command };
     } catch (error) {
-      return { ok: false, dir, command, error: error instanceof Error ? error.message : String(error) };
+      return { ok: false, dir, error: `无法创建媒体文件夹：${error instanceof Error ? error.message : String(error)}` };
     }
+
+    if (!existsSync(dir)) {
+      return { ok: false, dir, error: `媒体文件夹不存在：${dir}` };
+    }
+
+    if (process.platform === "win32") {
+      return await new Promise((resolve) => {
+        const child = spawn("explorer.exe", [dir], { stdio: "ignore" });
+        child.once("error", (error) =>
+          resolve({ ok: false, dir, command: "explorer.exe", error: `启动资源管理器失败：${error.message}` }),
+        );
+        // Explorer exits almost immediately; this is a cleanup hook, not a verdict on opening.
+        child.once("exit", () => resolve({ ok: true, dir, command: "explorer.exe" }));
+        // If it somehow stays alive, still report success: the window is what was asked for.
+        setTimeout(() => resolve({ ok: true, dir, command: "explorer.exe" }), 1500);
+      });
+    }
+
+    const command = process.platform === "darwin" ? "open" : "xdg-open";
+    return await new Promise((resolve) => {
+      const child = spawn(command, [dir], { detached: true, stdio: "ignore" });
+      child.unref();
+      child.once("error", (error) => resolve({ ok: false, dir, command, error: error.message }));
+      resolve({ ok: true, dir, command });
+    });
   }
 
   async revealTaskFile(taskId) {
@@ -2552,6 +2596,8 @@ class MuseRuntime {
         };
       }),
       selectedId,
+      /** Shown in the settings heading so a report can name the build. Undefined if the manifest could not be read. */
+      version: VERSION,
       busy: this.busy,
       /**
        * The composer pill's reading, so it does not need a page-touching route.
@@ -3928,7 +3974,8 @@ export function apply(ctx, config) {
                 case "reveal-task-file":
                   return json(res, 200, await runtime.revealTaskFile(nonEmpty(asRecord(body).taskId)));
                 case "reveal-media":
-                  return json(res, 200, runtime.revealMediaDir());
+                  // `revealMediaDir` now awaits the launcher, so the result is a promise; without `await` the route would serialise `{}`.
+                  return json(res, 200, await runtime.revealMediaDir());
                 case "add":
                   return json(res, 200, runtime.addAccount(asRecord(body).label));
                 case "remove":

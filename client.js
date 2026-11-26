@@ -142,6 +142,7 @@ window.__ModuleLoader__.load({
       "pill.error": "读取提示",
 
       "settings.title": "Muse 账号",
+      "settings.version": "v{version}",
       /**
        * The sidebar entry, kept separate from the page heading.
        *
@@ -313,6 +314,7 @@ window.__ModuleLoader__.load({
       "pill.error": "Read error",
 
       "settings.title": "Muse accounts",
+      "settings.version": "v{version}",
       "settings.nav": "Muse",
       "settings.intro":
         "Each account keeps its own browser data directory. The first sign-in opens a visible window; you sign in once there. The browser holds the credential and the plugin never reads it.",
@@ -576,6 +578,7 @@ window.__ModuleLoader__.load({
 .muse-list,.muse-records,.muse-fields,.muse-fold,.muse-foot,.muse-empty{border:1px solid var(--muse-line);border-radius:12px;background:var(--muse-panel);}
 .muse-account,.muse-record{padding:16px 18px;display:grid;gap:9px;min-width:0;}
 .muse-account + .muse-account,.muse-record + .muse-record{border-top:1px solid var(--muse-line);}
+.muse-version{margin-inline-start:8px;font-size:12px;font-weight:400;font-variant-numeric:tabular-nums;color:var(--muse-sub);}
 .muse-identity,.muse-account-meta,.muse-foot-figs{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap;min-width:0;}
 .muse-identity{flex:1;}
 .muse-disclosure{appearance:none;background:transparent;border:0;border-radius:5px;padding:4px 2px;color:inherit;font:inherit;text-align:start;cursor:pointer;}
@@ -1641,6 +1644,16 @@ window.__ModuleLoader__.load({
               }
             } else if (result !== undefined && result.ok === false) {
               setNotice({ kind: "error", text: result.error ?? t("settings.actionFailed") });
+            } else if (action === "reveal-media") {
+              /**
+               * No banner for a successful open.
+               *
+               * Opening a folder is not an operation whose result belongs on this page — the window is the result. An earlier version printed the
+               * path as a notice, which read as an error: a coloured strip at the top of a settings page is what the other failures use, so a
+               * success wearing the same clothes is worse than silence.
+               *
+               * The failure path above still speaks, because a failed open leaves the user with nothing.
+               */
             } else if (result?.receipt) {
               const r = result.receipt;
               setNotice({ kind: ["set", "removed", "absent"].includes(r.outcome) ? "ok" : "warn",
@@ -1695,7 +1708,13 @@ window.__ModuleLoader__.load({
            * itself. So with no heading here, switching from another section into Muse lost a
            * line, and the pane started straight at the tabs.
            */
-          h("h3", null, h(MuseNavIcon, { size: 24 }), t("settings.nav")),
+          h("h3", null,
+            h(MuseNavIcon, { size: 24 }),
+            t("settings.nav"),
+            // The build that produced this pane, so a report can name it without digging through node_modules.
+            snapshot?.version === undefined
+              ? null
+              : h("span", { className: "muse-version" }, t("settings.version", { version: snapshot.version })),),
         /**
          * Three panes, one visible.
          *
