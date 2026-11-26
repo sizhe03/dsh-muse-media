@@ -108,8 +108,24 @@ test("the listed versions match the current manifest version", () => {
    * is cheaper than shipping users a stale index. The release steps close it by publishing, syncing, and
    * committing the bump together with the index.
    */
+  /**
+   * In CI the newest version must be listed — but only on branch builds.
+   *
+   * On a tag this assertion cannot be satisfied: the tag is what triggers the publish, so when verify runs the version is by definition not on the
+   * registry yet, and the index cannot contain a version npm has never heard of. Asserting it there makes every OIDC release impossible and forces
+   * the manual `npm publish` this assertion exists to protect.
+   *
+   * The failure worth catching is a branch where the version bump landed and the sync did not: the package is live on npm while Discover still
+   * advertises the previous version, and nothing else notices. That is a branch-only shape.
+   *
+   * Detection reads GITHUB_REF_TYPE rather than merely "am I in CI". With only GITHUB_ACTIONS=true the tag case is indistinguishable from a branch,
+   * which is the gap this comment used to describe without implementing.
+   */
   const inCi = process.env.GITHUB_ACTIONS === "true" || process.env.CI === "true";
-  if (inCi) {
+  const refType = process.env.GITHUB_REF_TYPE;
+  const isTagBuild = refType === "tag" || (process.env.GITHUB_REF ?? "").startsWith("refs/tags/");
+
+  if (inCi && !isTagBuild) {
     assert.ok(listed.includes(pkg.version), `market-index.json is missing ${pkg.version}; run the sync step`);
   }
 });
