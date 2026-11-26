@@ -107,10 +107,44 @@ jobs:
         # Same reason as in the rehearsal: Node 22 ships npm 10, which cannot do the OIDC exchange.
         run: npm install --global "npm@^11.5.1"
 
+      - name: Check whether this version is already on the registry
+        # A branch release usually publishes by hand, then tags the commit that carries the synced
+        # index. With the switch on, that tag would arrive here and try to publish a version that
+        # already exists — a red tag workflow on every normal release.
+        #
+        # The registry answers this anonymously: 200 for a published version, 404 for one that is not.
+        # So the job can decide without any credential, which matters because it must not need one.
+        id: registry
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          CODE="$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/dsh-muse-media/$VERSION")"
+          echo "registry returned $CODE for $VERSION"
+          if [ "$CODE" = "200" ]; then
+            echo "::notice::$VERSION is already published; nothing to do"
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          elif [ "$CODE" = "404" ]; then
+            echo "$VERSION is not published yet"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            # An unexpected answer is not permission to publish. Failing here is cheaper than a
+            # surprise E409 after the exchange.
+            echo "::error::unexpected registry response $CODE for $VERSION"
+            exit 1
+          fi
+
       - name: Publish
         # --provenance is automatic for OIDC publishes from a public repository; passing it makes the
         # intent explicit. npm CLI 11.5.1 or newer is required for trusted publishing.
+        if: steps.registry.outputs.publish == 'true'
         run: npm publish --provenance --access public
+
+      - name: Report
+        run: |
+          if [ "${{ steps.registry.outputs.publish }}" = "true" ]; then
+            echo "$(node -p "require('./package.json').version") published through OIDC"
+          else
+            echo "already published earlier; this tag only verified"
+          fi
 
   # ---------------------------------------------------------------------------
   # OIDC rehearsal.
